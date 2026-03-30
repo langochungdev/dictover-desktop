@@ -4,8 +4,10 @@ from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel, Field, field_validator
 
 try:
+    from .image import search_images
     from .translation import lookup_dictionary, translate
 except ImportError:
+    from image import search_images
     from translation import lookup_dictionary, translate
 
 
@@ -56,6 +58,12 @@ class LookupRequest(BaseModel):
         return value
 
 
+class ImageSearchRequest(BaseModel):
+    query: str = Field(min_length=0)
+    page: int = Field(default=1, ge=1)
+    page_size: int = Field(default=12, ge=1, le=24)
+
+
 app = FastAPI(title="DictOver Sidecar", version="0.1.0")
 
 
@@ -81,5 +89,13 @@ async def translate_endpoint(req: TranslateRequest) -> dict[str, str]:
 async def lookup_endpoint(req: LookupRequest) -> dict:
     try:
         return lookup_dictionary(req.word, req.source_lang)
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=str(exc)) from exc
+
+
+@app.post("/images")
+async def image_search_endpoint(req: ImageSearchRequest) -> dict:
+    try:
+        return search_images(req.query, req.page, req.page_size)
     except Exception as exc:
         raise HTTPException(status_code=500, detail=str(exc)) from exc

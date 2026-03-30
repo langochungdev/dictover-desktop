@@ -9,6 +9,29 @@ except ImportError:
     from engines import HTTP_TIMEOUT, SESSION, normalize_lang, translate
 
 
+LANG_TO_TTS = {
+    "zh-CN": "zh-CN",
+    "zh": "zh-CN",
+}
+
+
+def _normalize_tts_lang(lang: str) -> str:
+    normalized = str(lang or "en").strip()
+    return LANG_TO_TTS.get(normalized, normalized or "en")
+
+
+def _build_google_tts_url(text: str, lang: str) -> str:
+    query = str(text or "").strip()
+    if not query:
+        return ""
+    tts_lang = _normalize_tts_lang(lang)
+    encoded = quote(query)
+    return (
+        "https://translate.google.com/translate_tts"
+        f"?ie=UTF-8&client=tw-ob&tl={quote(tts_lang)}&q={encoded}"
+    )
+
+
 def _scan_audio_url(node: Any) -> str | None:
     if isinstance(node, dict):
         for value in node.values():
@@ -115,10 +138,12 @@ def _lookup_english(word: str) -> dict[str, Any]:
                             "example": example,
                         }
                     )
+    audio_url = audio or _build_google_tts_url(word, "en")
     return {
         "word": word,
         "phonetic": phonetic,
-        "audio_url": audio,
+        "audio_url": audio_url,
+        "audio_lang": "en",
         "meanings": meanings,
         "provider": "dictionaryapi.dev",
         "fallback_used": False,
@@ -141,10 +166,14 @@ def lookup_dictionary(word: str, source_lang: str) -> dict[str, Any]:
         payload = response.json()
         phonetic, meanings = _parse_wiktionary(payload)
         if meanings:
+            audio_url = _scan_audio_url(payload) or _build_google_tts_url(
+                word, source_lang
+            )
             return {
                 "word": word,
                 "phonetic": phonetic,
-                "audio_url": _scan_audio_url(payload),
+                "audio_url": audio_url,
+                "audio_lang": source_lang,
                 "meanings": meanings,
                 "provider": "wiktionary-rest",
                 "fallback_used": index == 1,
@@ -154,7 +183,8 @@ def lookup_dictionary(word: str, source_lang: str) -> dict[str, Any]:
     return {
         "word": word,
         "phonetic": None,
-        "audio_url": None,
+        "audio_url": _build_google_tts_url(word, source_lang),
+        "audio_lang": source_lang,
         "meanings": [
             {
                 "part_of_speech": "fallback",

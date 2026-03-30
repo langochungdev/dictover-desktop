@@ -25,7 +25,7 @@ export function DebugLogPopup({ logs }: DebugLogPopupProps) {
 
   return (
     <section className="apl-debug-log-root">
-      <div className="apl-debug-log-panel" role="dialog" aria-modal="false">
+      <div className="apl-debug-log-panel" role="region" aria-label="Debug logs">
         <header className="apl-debug-log-header">
           <h3>Debug Logs ({logs.length})</h3>
           <div className="apl-debug-log-actions">

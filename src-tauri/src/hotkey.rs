@@ -118,14 +118,13 @@ fn parse_hotkey_with_mode(shortcut: &str, allow_modifier_only: bool) -> Result<(
         }
     }
 
-    if key_count == 0 && allow_modifier_only {
-        if parts.len() == 1 && parts[0].eq_ignore_ascii_case("shift") {
-            return Ok(());
-        }
-        return Err("only Shift modifier-only hotkey is supported".to_owned());
-    }
-
     if key_count == 0 {
+        if allow_modifier_only {
+            if parts.len() == 1 && parts[0].eq_ignore_ascii_case("shift") {
+                return Ok(());
+            }
+            return Err("only Shift modifier-only hotkey is supported".to_owned());
+        }
         return Err("hotkey must include one non-modifier key".to_owned());
     }
 

@@ -18,11 +18,27 @@ struct ModifierHotkeyState {
     blocked: bool,
 }
 
+struct MouseSelectionState {
+    left_pressed: bool,
+    press_x: f64,
+    press_y: f64,
+    cursor_x: f64,
+    cursor_y: f64,
+    moved: bool,
+    last_release_at: Option<Instant>,
+    last_release_x: f64,
+    last_release_y: f64,
+}
+
 static AUTO_SELECTION_STATE: OnceLock<Mutex<AutoSelectionState>> = OnceLock::new();
 static PENDING_SELECTION_EVENT: OnceLock<Mutex<Option<SelectionEvent>>> = OnceLock::new();
 static MODIFIER_HOTKEY_STATE: OnceLock<Mutex<ModifierHotkeyState>> = OnceLock::new();
+static MOUSE_SELECTION_STATE: OnceLock<Mutex<MouseSelectionState>> = OnceLock::new();
 
 const SHIFT_TRIGGER_MAX_HOLD_MS: u64 = 700;
+const MOUSE_DRAG_MIN_DISTANCE_PX: f64 = 6.0;
+const DOUBLE_CLICK_MAX_DISTANCE_PX: f64 = 14.0;
+const DOUBLE_CLICK_MAX_INTERVAL_MS: u64 = 360;
 
 fn auto_selection_state() -> &'static Mutex<AutoSelectionState> {
     AUTO_SELECTION_STATE.get_or_init(|| {
@@ -45,6 +61,88 @@ fn modifier_hotkey_state() -> &'static Mutex<ModifierHotkeyState> {
             blocked: false,
         })
     })
+}
+
+fn mouse_selection_state() -> &'static Mutex<MouseSelectionState> {
+    MOUSE_SELECTION_STATE.get_or_init(|| {
+        Mutex::new(MouseSelectionState {
+            left_pressed: false,
+            press_x: 0.0,
+            press_y: 0.0,
+            cursor_x: 0.0,
+            cursor_y: 0.0,
+            moved: false,
+            last_release_at: None,
+            last_release_x: 0.0,
+            last_release_y: 0.0,
+        })
+    })
+}
+
+fn pointer_distance(x1: f64, y1: f64, x2: f64, y2: f64) -> f64 {
+    let dx = x1 - x2;
+    let dy = y1 - y2;
+    (dx * dx + dy * dy).sqrt()
+}
+
+fn should_trigger_auto_selection(event: &rdev::Event) -> bool {
+    let Ok(mut guard) = mouse_selection_state().lock() else {
+        return false;
+    };
+
+    match event.event_type {
+        rdev::EventType::ButtonPress(rdev::Button::Left) => {
+            guard.press_x = guard.cursor_x;
+            guard.press_y = guard.cursor_y;
+            guard.left_pressed = true;
+            guard.moved = false;
+            false
+        }
+        rdev::EventType::MouseMove { x, y } => {
+            guard.cursor_x = x;
+            guard.cursor_y = y;
+            if !guard.left_pressed {
+                return false;
+            }
+
+            if pointer_distance(guard.press_x, guard.press_y, x, y) >= MOUSE_DRAG_MIN_DISTANCE_PX {
+                guard.moved = true;
+            }
+            false
+        }
+        rdev::EventType::ButtonRelease(rdev::Button::Left) => {
+            let release_x = guard.cursor_x;
+            let release_y = guard.cursor_y;
+
+            let drag_distance =
+                pointer_distance(guard.press_x, guard.press_y, release_x, release_y);
+            let is_drag_selection =
+                guard.left_pressed && (guard.moved || drag_distance >= MOUSE_DRAG_MIN_DISTANCE_PX);
+
+            let now = Instant::now();
+            let is_double_click = guard
+                .last_release_at
+                .map(|at| {
+                    at.elapsed() <= Duration::from_millis(DOUBLE_CLICK_MAX_INTERVAL_MS)
+                        && pointer_distance(
+                            guard.last_release_x,
+                            guard.last_release_y,
+                            release_x,
+                            release_y,
+                        ) <= DOUBLE_CLICK_MAX_DISTANCE_PX
+                })
+                .unwrap_or(false);
+
+            guard.left_pressed = false;
+            guard.moved = false;
+            guard.last_release_at = Some(now);
+            guard.last_release_x = release_x;
+            guard.last_release_y = release_y;
+
+            is_drag_selection || is_double_click
+        }
+        _ => false,
+    }
 }
 
 fn is_shift_key(key: rdev::Key) -> bool {
@@ -141,7 +239,7 @@ pub fn start_selection_listener(app: AppHandle) {
         let callback = move |event: rdev::Event| {
             on_modifier_hotkey_event(&app_for_listener, &event.event_type);
 
-            if let rdev::EventType::ButtonRelease(rdev::Button::Left) = event.event_type {
+            if should_trigger_auto_selection(&event) {
                 let app_for_task = app_for_listener.clone();
                 tauri::async_runtime::spawn(async move {
                     let _ = on_auto_selection(app_for_task).await;

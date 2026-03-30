@@ -5,10 +5,51 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>DictOver Desktop</title>
+    <style>
+        body {
+            margin: 0;
+            background: radial-gradient(circle at 15% 15%, #dceaf2, #f7f4ea 50%, #efe4d6 100%);
+            color: #1f2023;
+            font-family: 'Space Grotesk', 'IBM Plex Sans', 'Segoe UI', sans-serif;
+        }
+
+        .apl-boot-shell {
+            max-width: 980px;
+            margin: 0 auto;
+            padding: 1rem;
+            display: grid;
+            gap: 0.7rem;
+        }
+
+        .apl-boot-card {
+            height: 58px;
+            border-radius: 12px;
+            border: 1px solid #d7dde9;
+            background: linear-gradient(110deg, #f2f5fb 8%, #ffffff 18%, #f2f5fb 33%);
+            background-size: 200% 100%;
+            animation: apl-boot-shimmer 1.1s linear infinite;
+        }
+
+        @keyframes apl-boot-shimmer {
+            from {
+                background-position: 200% 0;
+            }
+
+            to {
+                background-position: -200% 0;
+            }
+        }
+    </style>
 </head>
 
 <body>
-    <div id="root"></div>
+    <div id="root">
+        <div class="apl-boot-shell" aria-hidden="true">
+            <div class="apl-boot-card"></div>
+            <div class="apl-boot-card"></div>
+            <div class="apl-boot-card"></div>
+        </div>
+    </div>
     <script type="module" src="/src/main.tsx"></script>
 </body>
 

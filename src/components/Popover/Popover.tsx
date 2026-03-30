@@ -1,5 +1,6 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { DictionaryResult } from '@/services/dictionary'
+import { searchImages, type ImageOption } from '@/services/images'
 import type { TranslateResult } from '@/services/translate'
 import type { PopoverState } from '@/hooks/usePopover'
 import type { PopoverOpenPanelMode } from '@/types/settings'
@@ -13,6 +14,8 @@ interface PopoverProps {
   panelMode: PopoverOpenPanelMode
   onOpenSettings?: () => void
 }
+
+const IMAGE_PAGE_SIZE = 12
 
 function normalizeText(value: string): string {
   return value.replace(/\s+/g, ' ').trim()
@@ -43,13 +46,44 @@ function lookupPrimary(dictionary: DictionaryResult) {
   return { partOfSpeech, firstDefinition }
 }
 
-function imageCandidates(query: string): string[] {
-  const safeQuery = encodeURIComponent(query.trim())
-  if (!safeQuery) {
-    return []
+function normalizeImageQuery(value: string): string {
+  const compact = normalizeText(value)
+  if (!compact) {
+    return ''
+  }
+  return compact.split(' ').slice(0, 8).join(' ').slice(0, 80).trim()
+}
+
+function resolveImageQuery(
+  state: PopoverState,
+  selection: string,
+  dictionary: DictionaryResult | null,
+): string {
+  if (state === 'lookup') {
+    return normalizeImageQuery(dictionary?.word || selection)
+  }
+  return normalizeImageQuery(selection)
+}
+
+function buildAlternativeAudioUrl(audioUrl: string): string {
+  const url = String(audioUrl || '').trim()
+  if (!url) {
+    return ''
   }
 
-  return [0, 1, 2, 3].map((index) => `https://source.unsplash.com/600x420/?${safeQuery}&sig=${index}`)
+  if (url.includes('translate.googleapis.com/translate_tts')) {
+    return url
+      .replace('translate.googleapis.com/translate_tts', 'translate.google.com/translate_tts')
+      .replace('client=gtx', 'client=tw-ob')
+  }
+
+  if (url.includes('translate.google.com/translate_tts')) {
+    return url
+      .replace('translate.google.com/translate_tts', 'translate.googleapis.com/translate_tts')
+      .replace('client=tw-ob', 'client=gtx')
+  }
+
+  return ''
 }
 
 function LoadingDots({ label }: { label: string }) {
@@ -110,14 +144,21 @@ export function Popover({
   const [activePanel, setActivePanel] = useState<PopoverOpenPanelMode>('none')
   const [audioPlaying, setAudioPlaying] = useState(false)
   const [audioError, setAudioError] = useState<string | null>(null)
+  const [imageLoading, setImageLoading] = useState(false)
+  const [imageError, setImageError] = useState<string | null>(null)
+  const [imageItems, setImageItems] = useState<ImageOption[]>([])
   const audioRef = useRef<HTMLAudioElement | null>(null)
+  const imageRequestIdRef = useRef(0)
 
   const stopAudio = useCallback(() => {
-    if (!audioRef.current) {
-      return
+    if (audioRef.current) {
+      audioRef.current.pause()
+      audioRef.current.currentTime = 0
+      audioRef.current = null
     }
-    audioRef.current.pause()
-    audioRef.current.currentTime = 0
+    if (typeof window !== 'undefined' && window.speechSynthesis) {
+      window.speechSynthesis.cancel()
+    }
     setAudioPlaying(false)
   }, [])
 
@@ -126,12 +167,81 @@ export function Popover({
   }, [panelMode, selection, state])
 
   useEffect(() => {
+    imageRequestIdRef.current += 1
+    setImageLoading(false)
+    setImageError(null)
+    setImageItems([])
+  }, [selection, state])
+
+  useEffect(() => {
     return () => {
       stopAudio()
     }
   }, [stopAudio])
 
-  const canPlayAudio = Boolean(dictionary?.audio_url)
+  const cleanSelection = normalizeText(selection)
+  const selectedText = cleanSelection || 'Selection'
+  const imageQuery = useMemo(
+    () => resolveImageQuery(state, selectedText, dictionary),
+    [dictionary, selectedText, state],
+  )
+
+  useEffect(() => {
+    if (activePanel !== 'images' || !imageQuery) {
+      return
+    }
+
+    const requestId = imageRequestIdRef.current + 1
+    imageRequestIdRef.current = requestId
+
+    setImageLoading(true)
+    setImageError(null)
+
+    void (async () => {
+      try {
+        const result = await searchImages({
+          query: imageQuery,
+          page: 1,
+          page_size: IMAGE_PAGE_SIZE,
+        })
+
+        if (imageRequestIdRef.current !== requestId) {
+          return
+        }
+
+        const options = Array.isArray(result.options) ? result.options : []
+        setImageItems(options)
+        if (result.error && result.error.trim()) {
+          setImageError(result.error)
+        } else {
+          setImageError(null)
+        }
+      } catch {
+        if (imageRequestIdRef.current !== requestId) {
+          return
+        }
+        setImageItems([])
+        setImageError('Image search failed')
+      } finally {
+        if (imageRequestIdRef.current === requestId) {
+          setImageLoading(false)
+        }
+      }
+    })()
+  }, [activePanel, imageQuery])
+
+  const speakFallback = useCallback((word: string, lang: string): boolean => {
+    const text = normalizeText(word)
+    if (!text || typeof window === 'undefined' || !window.speechSynthesis) {
+      return false
+    }
+    const utterance = new SpeechSynthesisUtterance(text)
+    if (lang) {
+      utterance.lang = lang
+    }
+    window.speechSynthesis.speak(utterance)
+    return true
+  }, [])
 
   const playAudio = useCallback(async () => {
     if (audioPlaying) {
@@ -139,56 +249,79 @@ export function Popover({
       return
     }
 
-    if (!dictionary?.audio_url) {
-      setAudioError('No audio source available')
-      return
-    }
-
     setAudioError(null)
     stopAudio()
 
-    try {
-      const audio = new Audio(dictionary.audio_url)
-      audioRef.current = audio
-      audio.onended = () => setAudioPlaying(false)
-      audio.onerror = () => {
-        setAudioPlaying(false)
-        setAudioError('Audio playback failed')
+    const source = String(dictionary?.audio_url || '').trim()
+    const fallbackWord = normalizeText(dictionary?.word || selectedText)
+    const fallbackLang = normalizeText(dictionary?.audio_lang || 'en')
+
+    const tryPlayUrl = async (url: string): Promise<boolean> => {
+      if (!url) {
+        return false
       }
-      setAudioPlaying(true)
-      await audio.play()
-    } catch {
-      setAudioPlaying(false)
+
+      try {
+        const audio = new Audio(url)
+        audioRef.current = audio
+        audio.onended = () => setAudioPlaying(false)
+        audio.onerror = () => {
+          setAudioPlaying(false)
+        }
+        setAudioPlaying(true)
+        await audio.play()
+        return true
+      } catch {
+        setAudioPlaying(false)
+        return false
+      }
+    }
+
+    if (source) {
+      const primaryOk = await tryPlayUrl(source)
+      if (primaryOk) {
+        return
+      }
+
+      const alternative = buildAlternativeAudioUrl(source)
+      if (alternative) {
+        const alternativeOk = await tryPlayUrl(alternative)
+        if (alternativeOk) {
+          return
+        }
+      }
+    }
+
+    const speechOk = speakFallback(fallbackWord, fallbackLang)
+    if (!speechOk) {
       setAudioError('Audio playback failed')
     }
-  }, [audioPlaying, dictionary?.audio_url, stopAudio])
+  }, [audioPlaying, dictionary, selectedText, speakFallback, stopAudio])
 
   if (state === 'idle') {
     return null
   }
 
-  const cleanSelection = normalizeText(selection)
-  const selectedText = cleanSelection || 'Selection'
   const translationLines = translation
     ? sanitizeMarkup(translation.result)
-        .split(/\r?\n+/)
-        .map((line) => normalizeText(line))
-        .filter(Boolean)
+      .split(/\r?\n+/)
+      .map((line) => normalizeText(line))
+      .filter(Boolean)
     : []
 
   const lookupData = dictionary
     ? {
-        word: normalizeText(sanitizeMarkup(dictionary.word || selectedText)),
-        phonetic: normalizeText(sanitizeMarkup(dictionary.phonetic || '')),
-        ...lookupPrimary(dictionary)
-      }
+      word: normalizeText(sanitizeMarkup(dictionary.word || selectedText)),
+      phonetic: normalizeText(sanitizeMarkup(dictionary.phonetic || '')),
+      ...lookupPrimary(dictionary)
+    }
     : null
 
   const definitionText = lookupData?.firstDefinition || ''
   const showDetailsPanel = state === 'lookup' && Boolean(dictionary) && activePanel === 'details'
   const showImagePanel = activePanel === 'images'
   const showSidePanel = showDetailsPanel || showImagePanel
-  const images = imageCandidates(selectedText)
+  const canPlayAudio = Boolean(dictionary)
 
   return (
     <section className={`apl-popover ${showSidePanel ? 'apl-popover--split' : ''}`} data-testid="popover" role="dialog" aria-modal="true" aria-label="Dictover popover">
@@ -288,12 +421,14 @@ export function Popover({
       {showImagePanel && (
         <aside className="apl-subpanel" data-panel-mode="images">
           <div className="apl-subpanel-body apl-image-grid">
-            {images.length > 0 ? images.map((src, index) => (
-              <article key={`${src}-${index}`} className="apl-image-card">
-                <img src={src} alt={`${selectedText} ${index + 1}`} loading="lazy" />
-              </article>
-            )) : (
-              <p className="apl-meta">No image query.</p>
+            {imageLoading && <LoadingDots label="Loading images" />}
+            {!imageLoading && imageItems.length > 0 && imageItems.map((item, index) => (
+              <a key={`${item.src}-${index}`} className="apl-image-card" href={item.page_url || item.src} target="_blank" rel="noopener noreferrer">
+                <img src={item.src} alt={item.title || `${imageQuery} ${index + 1}`} loading={index < 4 ? 'eager' : 'lazy'} />
+              </a>
+            ))}
+            {!imageLoading && imageItems.length === 0 && (
+              <p className="apl-meta">{imageError || 'No image results.'}</p>
             )}
           </div>
         </aside>

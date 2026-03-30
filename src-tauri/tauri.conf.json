@@ -46,6 +46,15 @@
         "transparent": true,
         "shadow": false,
         "focus": false
+      },
+      {
+        "label": "debug-log",
+        "title": "DictOver Debug Logs",
+        "url": "/?window=debug-log",
+        "width": 760,
+        "height": 520,
+        "resizable": true,
+        "visible": false
       }
     ],
     "security": {

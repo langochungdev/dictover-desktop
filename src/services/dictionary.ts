@@ -10,6 +10,7 @@ export interface DictionaryResult {
   word: string;
   phonetic: string | null;
   audio_url: string | null;
+  audio_lang?: string | null;
   meanings: DictionaryMeaning[];
   provider: string;
   fallback_used: boolean;

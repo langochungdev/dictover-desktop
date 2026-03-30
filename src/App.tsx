@@ -2,16 +2,12 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { invoke } from '@tauri-apps/api/core'
 import { listen } from '@tauri-apps/api/event'
 import { Popover } from '@/components/Popover/Popover'
-import { DebugLogPopup } from '@/components/DebugLog/DebugLogPopup'
+import { DebugLogWindow } from '@/components/DebugLog/DebugLogWindow'
 import { SettingsPanel } from '@/components/Settings/SettingsPanel'
 import { getSettingsCopy } from '@/constants/settingsI18n'
 import { usePopover } from '@/hooks/usePopover'
 import { loadSettings, saveSettings } from '@/services/config'
-import {
-  appendDebugLog,
-  readDebugLogs,
-  type DebugLogEntry,
-} from '@/services/debugLog'
+import { appendDebugLog } from '@/services/debugLog'
 import { DEFAULT_SETTINGS, type AppSettings } from '@/types/settings'
 
 interface SelectionEventPayload {
@@ -41,6 +37,7 @@ const WINDOW_MODE =
 
 const IS_POPOVER_WINDOW = WINDOW_MODE === 'popover'
 const IS_HOTKEY_INDICATOR_WINDOW = WINDOW_MODE === 'hotkey-indicator'
+const IS_DEBUG_LOG_WINDOW = WINDOW_MODE === 'debug-log'
 
 function shortText(value: string, max = 72): string {
   const clean = value.replace(/\s+/g, ' ').trim()
@@ -179,9 +176,17 @@ function SettingsWindow() {
     return copy.saveFailed
   }, [copy, status])
 
+  const openDebugWindow = useCallback(() => {
+    void invoke('show_debug_window')
+  }, [])
+
   return (
     <main className="apl-settings-shell">
       <p className="apl-meta">{statusMessage}</p>
+
+      <div className="apl-settings-toolbar">
+        <button type="button" onClick={openDebugWindow}>Open Debug Window</button>
+      </div>
 
       {loadingSettings && (
         <section className="apl-settings-boot" role="status" aria-live="polite">
@@ -202,19 +207,8 @@ function SettingsWindow() {
 
 function PopoverWindow() {
   const [settings, setSettings] = useState<AppSettings>(DEFAULT_SETTINGS)
-  const [logs, setLogs] = useState<DebugLogEntry[]>(() => readDebugLogs())
   const lastLoggedStateRef = useRef<string>('idle')
   const { state, data, error, close, openFromSelection } = usePopover(settings)
-
-  useEffect(() => {
-    const refresh = () => {
-      setLogs(readDebugLogs())
-    }
-    window.addEventListener('dictover-debug-log-updated', refresh)
-    return () => {
-      window.removeEventListener('dictover-debug-log-updated', refresh)
-    }
-  }, [])
 
   const consumePendingSelection = useCallback(async () => {
     try {
@@ -338,11 +332,7 @@ function PopoverWindow() {
     const onPointerDown = (event: PointerEvent) => {
       const target = event.target as Node | null
       const popover = document.querySelector('.apl-popover')
-      const debugPopup = document.querySelector('.apl-debug-log-root')
       if (!popover || !target) {
-        return
-      }
-      if (debugPopup?.contains(target)) {
         return
       }
       if (popover.contains(target)) {
@@ -379,7 +369,6 @@ function PopoverWindow() {
         panelMode={settings.popover_open_panel_mode}
         onOpenSettings={openSettingsWindow}
       />
-      <DebugLogPopup logs={logs} />
     </main>
   )
 }
@@ -399,9 +388,11 @@ export function App() {
   useEffect(() => {
     document.body.classList.toggle('apl-popover-body', IS_POPOVER_WINDOW)
     document.body.classList.toggle('apl-hotkey-indicator-body', IS_HOTKEY_INDICATOR_WINDOW)
+    document.body.classList.toggle('apl-debug-body', IS_DEBUG_LOG_WINDOW)
     return () => {
       document.body.classList.remove('apl-popover-body')
       document.body.classList.remove('apl-hotkey-indicator-body')
+      document.body.classList.remove('apl-debug-body')
     }
   }, [])
 
@@ -411,6 +402,10 @@ export function App() {
 
   if (IS_POPOVER_WINDOW) {
     return <PopoverWindow />
+  }
+
+  if (IS_DEBUG_LOG_WINDOW) {
+    return <DebugLogWindow />
   }
 
   return <SettingsWindow />

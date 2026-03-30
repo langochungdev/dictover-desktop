@@ -43,10 +43,12 @@ fn main() {
             bridge::save_config,
             bridge::translate_text,
             bridge::lookup_dictionary,
+            bridge::search_images,
             bridge::emit_selection_changed,
             bridge::hide_popover,
             bridge::take_pending_selection,
-            bridge::show_settings_window
+            bridge::show_settings_window,
+            bridge::show_debug_window
         ])
         .run(tauri::generate_context!())
         .expect("error while running DictOver Desktop");
