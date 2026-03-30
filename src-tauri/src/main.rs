@@ -44,7 +44,8 @@ fn main() {
             bridge::lookup_dictionary,
             bridge::emit_selection_changed,
             bridge::hide_popover,
-            bridge::take_pending_selection
+            bridge::take_pending_selection,
+            bridge::show_settings_window
         ])
         .run(tauri::generate_context!())
         .expect("error while running DictOver Desktop");

@@ -58,12 +58,6 @@ export function usePopover(settings: AppSettings) {
         close();
         return;
       }
-      if (
-        settings.popover_trigger_mode === "shortcut" &&
-        trigger !== "shortcut"
-      ) {
-        return;
-      }
 
       if (trigger === "auto") {
         const now = Date.now();

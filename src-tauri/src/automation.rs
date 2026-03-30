@@ -25,6 +25,8 @@ fn run_control_combo(enigo: &mut Enigo, key: Key) -> Result<(), String> {
 fn restore_clipboard(clipboard: &mut Clipboard, previous: Option<String>) {
     if let Some(snapshot) = previous {
         let _ = clipboard.set_text(snapshot);
+    } else {
+        let _ = clipboard.set_text(String::new());
     }
 }
 
@@ -39,17 +41,15 @@ fn clipboard_marker(prefix: &str) -> String {
 pub fn capture_selection_text() -> Result<String, String> {
     let mut clipboard = Clipboard::new().map_err(|err| format!("open clipboard failed: {err}"))?;
     let previous = clipboard.get_text().ok();
-    let marker = previous.as_ref().map(|_| clipboard_marker("selection"));
-    if let Some(flag) = marker.as_ref() {
-        let _ = clipboard.set_text(flag.clone());
-    }
+    let marker = clipboard_marker("selection");
+    let _ = clipboard.set_text(marker.clone());
     let mut enigo = new_enigo()?;
 
     run_control_combo(&mut enigo, Key::Unicode('c'))?;
     thread::sleep(Duration::from_millis(COPY_DELAY_MS));
 
     let selected = clipboard.get_text().unwrap_or_default();
-    let resolved = if marker.as_ref().is_some_and(|flag| selected == *flag) {
+    let resolved = if selected == marker {
         String::new()
     } else {
         selected
@@ -61,10 +61,8 @@ pub fn capture_selection_text() -> Result<String, String> {
 pub fn capture_active_document_text() -> Result<String, String> {
     let mut clipboard = Clipboard::new().map_err(|err| format!("open clipboard failed: {err}"))?;
     let previous = clipboard.get_text().ok();
-    let marker = previous.as_ref().map(|_| clipboard_marker("document"));
-    if let Some(flag) = marker.as_ref() {
-        let _ = clipboard.set_text(flag.clone());
-    }
+    let marker = clipboard_marker("document");
+    let _ = clipboard.set_text(marker.clone());
     let mut enigo = new_enigo()?;
 
     run_control_combo(&mut enigo, Key::Unicode('a'))?;
@@ -73,7 +71,7 @@ pub fn capture_active_document_text() -> Result<String, String> {
     thread::sleep(Duration::from_millis(COPY_DELAY_MS));
 
     let selected = clipboard.get_text().unwrap_or_default();
-    let resolved = if marker.as_ref().is_some_and(|flag| selected == *flag) {
+    let resolved = if selected == marker {
         String::new()
     } else {
         selected

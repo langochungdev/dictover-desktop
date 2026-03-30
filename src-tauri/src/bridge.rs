@@ -1,7 +1,7 @@
 use reqwest::Client;
 use serde::{Deserialize, Serialize};
 use std::sync::Mutex;
-use tauri::{AppHandle, State};
+use tauri::{AppHandle, Manager, State};
 
 use crate::config::{self, AppConfig};
 use crate::hotkey;
@@ -124,4 +124,16 @@ pub fn hide_popover(app: AppHandle) -> Result<(), String> {
 #[tauri::command]
 pub fn take_pending_selection() -> Result<Option<selection::SelectionEvent>, String> {
     selection::take_pending_selection()
+}
+
+#[tauri::command]
+pub fn show_settings_window(app: AppHandle) -> Result<(), String> {
+    let main = app
+        .get_webview_window("main")
+        .ok_or_else(|| "main window not found".to_owned())?;
+    main.show()
+        .map_err(|err| format!("show settings window failed: {err}"))?;
+    main.set_focus()
+        .map_err(|err| format!("focus settings window failed: {err}"))?;
+    Ok(())
 }

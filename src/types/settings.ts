@@ -26,6 +26,66 @@ export interface AppSettings {
   hotkey_translate_shortcut: string;
 }
 
+function isValidModifier(token: string): boolean {
+  const value = token.toLowerCase();
+  return (
+    value === "ctrl" ||
+    value === "control" ||
+    value === "shift" ||
+    value === "alt" ||
+    value === "cmd" ||
+    value === "meta" ||
+    value === "cmdorctrl" ||
+    value === "commandorcontrol"
+  );
+}
+
+function isValidKeyToken(token: string): boolean {
+  if (!token) {
+    return false;
+  }
+  if (token.length === 1) {
+    return /^[a-z0-9]$/i.test(token);
+  }
+  if (/^f\d+$/i.test(token)) {
+    return true;
+  }
+  const value = token.toLowerCase();
+  return value === "space" || value === "enter" || value === "tab";
+}
+
+function sanitizeShortcut(raw: string, fallback: string): string {
+  const parts = raw
+    .split("+")
+    .map((part) => part.trim())
+    .filter(Boolean);
+
+  if (parts.length === 0) {
+    return fallback;
+  }
+
+  let keyCount = 0;
+  for (let index = 0; index < parts.length; index += 1) {
+    const token = parts[index];
+    if (isValidModifier(token)) {
+      continue;
+    }
+    if (!isValidKeyToken(token)) {
+      return fallback;
+    }
+    keyCount += 1;
+    if (keyCount > 1 || index !== parts.length - 1) {
+      return fallback;
+    }
+  }
+
+  if (keyCount !== 1) {
+    return fallback;
+  }
+
+  return parts.join("+");
+}
+
 export const DEFAULT_SETTINGS: AppSettings = {
   enable_lookup: true,
   enable_translate: true,
@@ -33,8 +93,8 @@ export const DEFAULT_SETTINGS: AppSettings = {
   auto_play_audio_mode: "word",
   popover_trigger_mode: "auto",
   popover_shortcut: "Ctrl+Shift+D",
-  source_language: "auto",
-  target_language: "en",
+  source_language: "en",
+  target_language: "vi",
   quick_translate_source_language: "auto",
   quick_translate_target_language: "en",
   max_definitions: 3,
@@ -50,11 +110,14 @@ export function sanitizeSettings(partial: Partial<AppSettings>): AppSettings {
     ? Math.max(1, Math.min(10, Math.round(merged.max_definitions)))
     : DEFAULT_SETTINGS.max_definitions;
 
-  const popoverShortcut =
-    merged.popover_shortcut.trim() || DEFAULT_SETTINGS.popover_shortcut;
-  const hotkeyTranslateShortcut =
-    merged.hotkey_translate_shortcut.trim() ||
-    DEFAULT_SETTINGS.hotkey_translate_shortcut;
+  const popoverShortcut = sanitizeShortcut(
+    merged.popover_shortcut,
+    DEFAULT_SETTINGS.popover_shortcut,
+  );
+  const hotkeyTranslateShortcut = sanitizeShortcut(
+    merged.hotkey_translate_shortcut,
+    DEFAULT_SETTINGS.hotkey_translate_shortcut,
+  );
   const audioMode =
     merged.auto_play_audio_mode || DEFAULT_SETTINGS.auto_play_audio_mode;
   const triggerMode =
@@ -77,6 +140,10 @@ export function sanitizeSettings(partial: Partial<AppSettings>): AppSettings {
 
   return {
     ...merged,
+    enable_lookup: true,
+    enable_translate: true,
+    enable_audio: true,
+    show_example: true,
     auto_play_audio_mode: audioMode,
     popover_trigger_mode: triggerMode,
     popover_shortcut: popoverShortcut,

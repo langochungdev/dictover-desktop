@@ -4,7 +4,6 @@ use std::time::{Duration, Instant};
 use tauri::{AppHandle, Emitter, Manager, PhysicalPosition, Position};
 
 use crate::automation;
-use crate::bridge::AppState;
 
 struct AutoSelectionState {
     last_text: String,
@@ -66,16 +65,22 @@ pub fn start_selection_listener(app: AppHandle) {
     });
 }
 
+fn is_any_app_window_focused(app: &AppHandle) -> bool {
+    if let Some(main) = app.get_webview_window("main") {
+        if main.is_focused().unwrap_or(false) {
+            return true;
+        }
+    }
+    if let Some(popover) = app.get_webview_window("popover") {
+        if popover.is_focused().unwrap_or(false) {
+            return true;
+        }
+    }
+    false
+}
+
 async fn on_auto_selection(app: AppHandle) -> Result<(), String> {
-    let state = app.state::<AppState>();
-    let config = {
-        let guard = state
-            .config
-            .lock()
-            .map_err(|_| "config lock poisoned".to_owned())?;
-        guard.clone()
-    };
-    if config.popover_trigger_mode != "auto" {
+    if is_any_app_window_focused(&app) {
         return Ok(());
     }
 
@@ -84,6 +89,7 @@ async fn on_auto_selection(app: AppHandle) -> Result<(), String> {
         .map_err(|err| format!("capture selection task failed: {err}"))??;
     let selected = raw_text.replace('\r', "").trim().to_owned();
     if selected.is_empty() {
+        let _ = hide_popover_window(&app);
         return Ok(());
     }
 
@@ -91,7 +97,8 @@ async fn on_auto_selection(app: AppHandle) -> Result<(), String> {
         let mut guard = auto_selection_state()
             .lock()
             .map_err(|_| "auto selection state lock poisoned".to_owned())?;
-        let repeated = guard.last_text == selected && guard.last_emit.elapsed() < Duration::from_millis(850);
+        let repeated =
+            guard.last_text == selected && guard.last_emit.elapsed() < Duration::from_millis(850);
         if repeated {
             return Ok(());
         }
@@ -190,7 +197,11 @@ pub fn hide_popover_window(app: &AppHandle) -> Result<(), String> {
     Ok(())
 }
 
-pub fn emit_selection_changed(app: &AppHandle, text: String, trigger: String) -> Result<(), String> {
+pub fn emit_selection_changed(
+    app: &AppHandle,
+    text: String,
+    trigger: String,
+) -> Result<(), String> {
     let payload = SelectionEvent { text, trigger };
     app.emit("selection-changed", payload)
         .map_err(|err| format!("emit selection event failed: {err}"))

@@ -3,6 +3,60 @@ use std::fs;
 use std::path::PathBuf;
 use tauri::{AppHandle, Manager};
 
+fn is_valid_modifier(token: &str) -> bool {
+    matches!(
+        token.to_ascii_lowercase().as_str(),
+        "ctrl" | "control" | "shift" | "alt" | "cmd" | "meta" | "cmdorctrl" | "commandorcontrol"
+    )
+}
+
+fn is_valid_key_token(token: &str) -> bool {
+    if token.is_empty() {
+        return false;
+    }
+    if token.len() == 1 {
+        return token.chars().all(|ch| ch.is_ascii_alphanumeric());
+    }
+    if let Some(rest) = token.strip_prefix('F') {
+        return !rest.is_empty() && rest.chars().all(|ch| ch.is_ascii_digit());
+    }
+    matches!(
+        token.to_ascii_lowercase().as_str(),
+        "space" | "enter" | "tab"
+    )
+}
+
+fn sanitize_shortcut(raw: &str, fallback: &str) -> String {
+    let parts: Vec<&str> = raw
+        .split('+')
+        .map(|part| part.trim())
+        .filter(|part| !part.is_empty())
+        .collect();
+    if parts.is_empty() {
+        return fallback.to_owned();
+    }
+
+    let mut key_count = 0;
+    for (index, token) in parts.iter().enumerate() {
+        if is_valid_modifier(token) {
+            continue;
+        }
+        if !is_valid_key_token(token) {
+            return fallback.to_owned();
+        }
+        key_count += 1;
+        if key_count > 1 || index != parts.len() - 1 {
+            return fallback.to_owned();
+        }
+    }
+
+    if key_count != 1 {
+        return fallback.to_owned();
+    }
+
+    parts.join("+")
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(default)]
 pub struct AppConfig {
@@ -32,8 +86,8 @@ impl Default for AppConfig {
             auto_play_audio_mode: "word".to_owned(),
             popover_trigger_mode: "auto".to_owned(),
             popover_shortcut: "Ctrl+Shift+D".to_owned(),
-            source_language: "auto".to_owned(),
-            target_language: "en".to_owned(),
+            source_language: "en".to_owned(),
+            target_language: "vi".to_owned(),
             quick_translate_source_language: "auto".to_owned(),
             quick_translate_target_language: "en".to_owned(),
             max_definitions: 3,
@@ -48,6 +102,10 @@ impl Default for AppConfig {
 impl AppConfig {
     pub fn sanitize(self) -> Self {
         let mut next = self;
+        next.enable_lookup = true;
+        next.enable_translate = true;
+        next.enable_audio = true;
+        next.show_example = true;
         next.max_definitions = next.max_definitions.clamp(1, 10);
         if next.auto_play_audio_mode.is_empty() {
             next.auto_play_audio_mode = "word".to_owned();
@@ -55,14 +113,12 @@ impl AppConfig {
         if next.popover_trigger_mode.is_empty() {
             next.popover_trigger_mode = "auto".to_owned();
         }
-        if next.popover_shortcut.is_empty() {
-            next.popover_shortcut = "Ctrl+Shift+D".to_owned();
-        }
+        next.popover_shortcut = sanitize_shortcut(&next.popover_shortcut, "Ctrl+Shift+D");
         if next.source_language.is_empty() {
-            next.source_language = "auto".to_owned();
+            next.source_language = "en".to_owned();
         }
         if next.target_language.is_empty() {
-            next.target_language = "en".to_owned();
+            next.target_language = "vi".to_owned();
         }
         if next.quick_translate_source_language.is_empty() {
             next.quick_translate_source_language = "auto".to_owned();
@@ -76,9 +132,8 @@ impl AppConfig {
         if next.popover_definition_language_mode.is_empty() {
             next.popover_definition_language_mode = "output".to_owned();
         }
-        if next.hotkey_translate_shortcut.is_empty() {
-            next.hotkey_translate_shortcut = "Ctrl+Shift+T".to_owned();
-        }
+        next.hotkey_translate_shortcut =
+            sanitize_shortcut(&next.hotkey_translate_shortcut, "Ctrl+Shift+T");
         next
     }
 }
