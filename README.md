@@ -12,7 +12,7 @@ Project dùng kiến trúc 3 lớp:
 ## Trạng thái hiện tại
 
 - Step 1: Hoàn thành probe + report khả thi API/translation/audio/image.
-- Step 2: Hoàn thành skeleton app, settings UI, sidecar bridge, scripts build/release, CI/CD.
+- Step 2: Hoàn thành skeleton app, settings UI, sidecar bridge, scripts build/release, release workflow.
 - Step 3: Hoàn thành test layers (Rust unit, Python unit/API, frontend integration, e2e scaffold).
 
 ## Cấu trúc chính
@@ -119,7 +119,6 @@ bash scripts/release.sh v1.0.0
 
 ## CI/CD
 
-- `.github/workflows/test.yml`: chạy test khi push/PR
 - `.github/workflows/release.yml`: build/release khi push tag `v*`
 
 ## Ghi chú kỹ thuật
