@@ -85,7 +85,11 @@ def _lookup_english(word: str) -> dict[str, Any]:
             phonetic = raw_phonetic
         if isinstance(item.get("phonetics"), list):
             for p in item.get("phonetics") or []:
-                if isinstance(p, dict) and isinstance(p.get("audio"), str) and p.get("audio"):
+                if (
+                    isinstance(p, dict)
+                    and isinstance(p.get("audio"), str)
+                    and p.get("audio")
+                ):
                     audio = p.get("audio")
                     break
         for meaning in item.get("meanings") or []:
@@ -104,7 +108,9 @@ def _lookup_english(word: str) -> dict[str, Any]:
                 if defs:
                     meanings.append(
                         {
-                            "part_of_speech": str(meaning.get("partOfSpeech") or "meaning"),
+                            "part_of_speech": str(
+                                meaning.get("partOfSpeech") or "meaning"
+                            ),
                             "definitions": defs,
                             "example": example,
                         }

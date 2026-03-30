@@ -10,9 +10,17 @@ def test_translate_empty_string() -> None:
     assert result.mode == "empty"
 
 
-def test_detect_language_known_cases() -> None:
+def test_detect_language_known_cases(monkeypatch) -> None:
+    monkeypatch.setattr(engines, "detect", lambda _: "en")
     assert engines.detect_language("The weather is beautiful today.") == "en"
+
+    monkeypatch.setattr(engines, "detect", lambda _: "zh-cn")
     assert engines.detect_language("今天天气很好，我想出去走走。") == "zh-CN"
+
+
+def test_detect_language_defaults_to_en_when_detector_missing(monkeypatch) -> None:
+    monkeypatch.setattr(engines, "detect", None)
+    assert engines.detect_language("xin chào") == "en"
 
 
 def test_translate_prefers_argos(monkeypatch) -> None:
@@ -39,7 +47,9 @@ def test_translate_falls_back_api(monkeypatch) -> None:
     monkeypatch.setattr(
         engines,
         "fallback_translate_api",
-        lambda text, source, target: TranslationResult("hello", "mymemory", "api-fallback"),
+        lambda text, source, target: TranslationResult(
+            "hello", "mymemory", "api-fallback"
+        ),
     )
 
     result = engines.translate("xin chào", source="vi", target="en")

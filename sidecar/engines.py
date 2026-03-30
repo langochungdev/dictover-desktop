@@ -95,7 +95,9 @@ def fallback_translate_api(text: str, source: str, target: str) -> TranslationRe
     src = normalize_lang(source)
     tgt = normalize_lang(target)
     params = {"q": text, "langpair": f"{src}|{tgt}"}
-    response = SESSION.get("https://api.mymemory.translated.net/get", params=params, timeout=HTTP_TIMEOUT)
+    response = SESSION.get(
+        "https://api.mymemory.translated.net/get", params=params, timeout=HTTP_TIMEOUT
+    )
     payload = response.json()
     translated = ((payload.get("responseData") or {}).get("translatedText")) or text
     return TranslationResult(translated, "mymemory", "api-fallback")

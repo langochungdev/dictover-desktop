@@ -1,29 +1,31 @@
-import { invokeWithFallback, sidecarPost } from '@/services/tauri'
+import { invokeWithFallback, sidecarPost } from "@/services/tauri";
 
 export interface DictionaryMeaning {
-  part_of_speech: string
-  definitions: string[]
-  example: string | null
+  part_of_speech: string;
+  definitions: string[];
+  example: string | null;
 }
 
 export interface DictionaryResult {
-  word: string
-  phonetic: string | null
-  audio_url: string | null
-  meanings: DictionaryMeaning[]
-  provider: string
-  fallback_used: boolean
+  word: string;
+  phonetic: string | null;
+  audio_url: string | null;
+  meanings: DictionaryMeaning[];
+  provider: string;
+  fallback_used: boolean;
 }
 
 export interface DictionaryRequest {
-  word: string
-  source_lang: string
+  word: string;
+  source_lang: string;
 }
 
-export async function lookupDictionary(request: DictionaryRequest): Promise<DictionaryResult> {
+export async function lookupDictionary(
+  request: DictionaryRequest,
+): Promise<DictionaryResult> {
   return invokeWithFallback<DictionaryResult>(
-    'lookup_dictionary',
+    "lookup_dictionary",
     { payload: request },
-    async () => sidecarPost<DictionaryResult>('/lookup', request)
-  )
+    async () => sidecarPost<DictionaryResult>("/lookup", request),
+  );
 }

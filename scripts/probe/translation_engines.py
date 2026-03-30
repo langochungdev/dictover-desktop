@@ -90,12 +90,20 @@ class ArgosEngine:
         try:
             if self.supports_direct(src, tgt):
                 translated = self._atranslate.translate(text, src, tgt)
-                return ProbeResult(True, translated, round(now_ms() - start, 2), "direct")
+                return ProbeResult(
+                    True, translated, round(now_ms() - start, 2), "direct"
+                )
             if self.supports_pivot(src, tgt):
                 step1 = self._atranslate.translate(text, src, "en")
                 step2 = self._atranslate.translate(step1, "en", tgt)
                 return ProbeResult(True, step2, round(now_ms() - start, 2), "pivot")
-            return ProbeResult(False, "", round(now_ms() - start, 2), "unsupported", "pair-not-installed")
+            return ProbeResult(
+                False,
+                "",
+                round(now_ms() - start, 2),
+                "unsupported",
+                "pair-not-installed",
+            )
         except Exception as exc:
             return ProbeResult(False, "", round(now_ms() - start, 2), "error", str(exc))
 
@@ -147,7 +155,9 @@ class NllbEngine:
             self._tokenizer.src_lang = src_code
             inputs = self._tokenizer(text, return_tensors="pt", truncation=True)
             forced_id = self._tokenizer.convert_tokens_to_ids(tgt_code)
-            outputs = self._model.generate(**inputs, forced_bos_token_id=forced_id, max_new_tokens=512)
+            outputs = self._model.generate(
+                **inputs, forced_bos_token_id=forced_id, max_new_tokens=512
+            )
             decoded = self._tokenizer.batch_decode(outputs, skip_special_tokens=True)[0]
             return ProbeResult(True, decoded, round(now_ms() - start, 2), "direct")
         except Exception as exc:

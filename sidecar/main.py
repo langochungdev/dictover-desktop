@@ -9,7 +9,18 @@ except ImportError:
     from translation import lookup_dictionary, translate
 
 
-SUPPORTED_SOURCE_LANGS = {"auto", "vi", "en", "zh-CN", "ja", "ko", "ru", "de", "fr", "fi"}
+SUPPORTED_SOURCE_LANGS = {
+    "auto",
+    "vi",
+    "en",
+    "zh-CN",
+    "ja",
+    "ko",
+    "ru",
+    "de",
+    "fr",
+    "fi",
+}
 SUPPORTED_TARGET_LANGS = {"vi", "en", "zh-CN", "ja", "ko", "ru", "de", "fr", "fi"}
 
 

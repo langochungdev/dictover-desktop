@@ -58,9 +58,15 @@ def translation_section(data: dict) -> list[str]:
     matrix = argos.get("matrix") or []
     pivot_pairs = [m for m in matrix if m.get("pivot_via_en")]
     direct_pairs = [m for m in matrix if m.get("direct")]
-    lines.append(f"- Argos available: {argos.get('available')} (direct={len(direct_pairs)}, pivot={len(pivot_pairs)})")
-    lines.append(f"- NLLB available: {nllb.get('available')} (load={fmt_ms(nllb.get('load_ms'))} ms)")
-    lines.append(f"- NLLB RAM before/after load: {nllb.get('memory_before_mb')} MB -> {nllb.get('memory_after_mb')} MB")
+    lines.append(
+        f"- Argos available: {argos.get('available')} (direct={len(direct_pairs)}, pivot={len(pivot_pairs)})"
+    )
+    lines.append(
+        f"- NLLB available: {nllb.get('available')} (load={fmt_ms(nllb.get('load_ms'))} ms)"
+    )
+    lines.append(
+        f"- NLLB RAM before/after load: {nllb.get('memory_before_mb')} MB -> {nllb.get('memory_after_mb')} MB"
+    )
     lines.append("")
     lines.append("### Pivot Pairs (Argos)")
     if pivot_pairs:
@@ -87,7 +93,9 @@ def translation_section(data: dict) -> list[str]:
         )
     lines.append("")
     auto = data.get("auto_detect") or {}
-    lines.append(f"- Auto-detect available: {auto.get('available')}, accuracy={auto.get('accuracy')}")
+    lines.append(
+        f"- Auto-detect available: {auto.get('available')}, accuracy={auto.get('accuracy')}"
+    )
     lines.append("")
     return lines
 
@@ -104,7 +112,9 @@ def audio_section(data: dict) -> list[str]:
     swap_ok = sum(1 for x in swap if (x.get("probe") or {}).get("ok"))
     lines.append(f"- Google URL swap success variants: {swap_ok}/{len(swap)}")
     native = data.get("native_audio") or {}
-    lines.append(f"- Native audio tools: mpv={native.get('mpv')} ffplay={native.get('ffplay')}")
+    lines.append(
+        f"- Native audio tools: mpv={native.get('mpv')} ffplay={native.get('ffplay')}"
+    )
     lines.append("- Web Speech API: manual runtime check required in Tauri WebView")
     lines.append("")
     return lines
@@ -122,7 +132,9 @@ def image_section(data: dict) -> list[str]:
             wiki_ok += 1
     lines.append(f"- DuckDuckGo reachable in {ddg_ok}/{len(rows)} queries")
     lines.append(f"- Wikipedia search reachable in {wiki_ok}/{len(rows)} queries")
-    lines.append("- Google CSE only runs when GOOGLE_CSE_KEY and GOOGLE_CSE_CX are provided")
+    lines.append(
+        "- Google CSE only runs when GOOGLE_CSE_KEY and GOOGLE_CSE_CX are provided"
+    )
     logic = data.get("ui_logic") or {}
     lines.append(f"- Cache TTL probe: {logic.get('ttl_seconds')} seconds")
     lines.append("- Infinite scroll threshold probe: 260px")
@@ -138,12 +150,20 @@ def recommendation_section(translation: dict) -> list[str]:
         lines.append("- Use Argos as default for low-latency local translation.")
         lines.append("- Enable NLLB as quality mode for difficult language pairs.")
     elif argos_available:
-        lines.append("- Use Argos as primary engine and rely on pivot via EN where needed.")
+        lines.append(
+            "- Use Argos as primary engine and rely on pivot via EN where needed."
+        )
     elif nllb_available:
-        lines.append("- Use NLLB as primary engine and cache model load on app startup.")
+        lines.append(
+            "- Use NLLB as primary engine and cache model load on app startup."
+        )
     else:
-        lines.append("- Neither Argos nor NLLB is ready in this environment; install deps/models first.")
-    lines.append("- Keep word lookup fallback enabled to guarantee minimal output on API failures.")
+        lines.append(
+            "- Neither Argos nor NLLB is ready in this environment; install deps/models first."
+        )
+    lines.append(
+        "- Keep word lookup fallback enabled to guarantee minimal output on API failures."
+    )
     lines.append("")
     return lines
 

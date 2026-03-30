@@ -4,7 +4,13 @@ import datetime as dt
 import re
 from typing import Any
 
-from common import dump_json, http_get_json, normalize_lang, probe_binary_url, safe_quote
+from common import (
+    dump_json,
+    http_get_json,
+    normalize_lang,
+    probe_binary_url,
+    safe_quote,
+)
 
 
 CASES = [
@@ -21,7 +27,10 @@ CASES = [
 
 
 AUDIO_TEMPLATE_RE = re.compile(r"\{\{audio\|[^|]*\|([^|}]+)", re.IGNORECASE)
-FILE_RE = re.compile(r"\[\[(?:File|Datei|Fichier|T\u1eadp tin):([^|\]]+\.(?:ogg|oga|mp3|wav))", re.IGNORECASE)
+FILE_RE = re.compile(
+    r"\[\[(?:File|Datei|Fichier|T\u1eadp tin):([^|\]]+\.(?:ogg|oga|mp3|wav))",
+    re.IGNORECASE,
+)
 
 
 def _scan_audio_urls(value: Any, out: list[str]) -> None:
@@ -33,7 +42,9 @@ def _scan_audio_urls(value: Any, out: list[str]) -> None:
             _scan_audio_urls(sub, out)
     elif isinstance(value, str):
         low = value.lower()
-        if value.startswith("http") and (".ogg" in low or ".mp3" in low or "audio" in low):
+        if value.startswith("http") and (
+            ".ogg" in low or ".mp3" in low or "audio" in low
+        ):
             out.append(value)
 
 
@@ -44,7 +55,9 @@ def parse_dictionaryapi(payload: Any) -> dict[str, Any]:
     phonetic = bool(entry.get("phonetic"))
     meanings = bool(entry.get("meanings"))
     audio_url = None
-    for p in entry.get("phonetics", []) if isinstance(entry.get("phonetics"), list) else []:
+    for p in (
+        entry.get("phonetics", []) if isinstance(entry.get("phonetics"), list) else []
+    ):
         if isinstance(p, dict) and p.get("audio"):
             audio_url = p["audio"]
             break
@@ -79,8 +92,14 @@ def parse_wiktionary_rest(payload: Any) -> dict[str, Any]:
 def lookup_wiktionary_with_fallback(word: str, source_lang: str) -> dict[str, Any]:
     domain = normalize_lang(source_lang)
     urls = [
-        (f"{domain}.wiktionary.org", f"https://{domain}.wiktionary.org/api/rest_v1/page/definition/{safe_quote(word)}"),
-        ("en.wiktionary.org", f"https://en.wiktionary.org/api/rest_v1/page/definition/{safe_quote(word)}"),
+        (
+            f"{domain}.wiktionary.org",
+            f"https://{domain}.wiktionary.org/api/rest_v1/page/definition/{safe_quote(word)}",
+        ),
+        (
+            "en.wiktionary.org",
+            f"https://en.wiktionary.org/api/rest_v1/page/definition/{safe_quote(word)}",
+        ),
     ]
     attempts = []
     selected = None
@@ -95,7 +114,10 @@ def lookup_wiktionary_with_fallback(word: str, source_lang: str) -> dict[str, An
                 "status_code": res.status_code,
                 "latency_ms": res.latency_ms,
                 "ok": res.ok,
-                "fields": {"phonetic": bool(parsed.get("phonetic")), "meanings": bool(parsed.get("meanings"))},
+                "fields": {
+                    "phonetic": bool(parsed.get("phonetic")),
+                    "meanings": bool(parsed.get("meanings")),
+                },
                 "error": res.error,
             }
         )
@@ -123,7 +145,7 @@ def probe_wiktionary_audio_template(word: str, lang: str) -> dict[str, Any]:
     res = http_get_json(url, params=params)
     content = ""
     if isinstance(res.json_data, dict):
-        pages = (((res.json_data.get("query") or {}).get("pages")) or [])
+        pages = ((res.json_data.get("query") or {}).get("pages")) or []
         if isinstance(pages, list) and pages and isinstance(pages[0], dict):
             revs = pages[0].get("revisions") or []
             if isinstance(revs, list) and revs and isinstance(revs[0], dict):
@@ -152,7 +174,9 @@ def fallback_translate_word(word: str, source_lang: str) -> dict[str, Any]:
     res = http_get_json(url, params=params)
     translated = ""
     if isinstance(res.json_data, dict):
-        translated = ((res.json_data.get("responseData") or {}).get("translatedText")) or ""
+        translated = (
+            (res.json_data.get("responseData") or {}).get("translatedText")
+        ) or ""
     return {
         "status_code": res.status_code,
         "latency_ms": res.latency_ms,
@@ -178,9 +202,17 @@ def main() -> None:
             attempts = lookup["attempts"]
             provider = f"wiktionary-rest:{lookup['host']}"
         checks = {key: bool(parsed.get(key)) for key in expected}
-        fallback_triggered = (not res.ok) or ("meanings" in checks and not checks["meanings"])
-        fallback = fallback_translate_word(word, source_lang) if fallback_triggered else None
-        action_audio = probe_wiktionary_audio_template(word, source_lang) if source_lang != "en" else None
+        fallback_triggered = (not res.ok) or (
+            "meanings" in checks and not checks["meanings"]
+        )
+        fallback = (
+            fallback_translate_word(word, source_lang) if fallback_triggered else None
+        )
+        action_audio = (
+            probe_wiktionary_audio_template(word, source_lang)
+            if source_lang != "en"
+            else None
+        )
         rows.append(
             {
                 "word": word,
@@ -195,7 +227,9 @@ def main() -> None:
                 "lookup_attempts": attempts,
                 "fields": checks,
                 "audio_url": parsed.get("audio_url"),
-                "audio_probe": probe_binary_url(parsed["audio_url"]) if parsed.get("audio_url") else None,
+                "audio_probe": probe_binary_url(parsed["audio_url"])
+                if parsed.get("audio_url")
+                else None,
                 "action_audio_probe": action_audio,
                 "fallback_triggered": fallback_triggered,
                 "fallback": fallback,

@@ -3,7 +3,9 @@ from __future__ import annotations
 from typing import Any
 
 
-def install_required_argos_pairs(required_pairs: list[tuple[str, str]], installed_pairs: set[tuple[str, str]]) -> dict[str, Any]:
+def install_required_argos_pairs(
+    required_pairs: list[tuple[str, str]], installed_pairs: set[tuple[str, str]]
+) -> dict[str, Any]:
     report = {
         "attempted": 0,
         "installed": [],
@@ -43,5 +45,7 @@ def install_required_argos_pairs(required_pairs: list[tuple[str, str]], installe
             apkg.install_from_path(path)
             report["installed"].append({"source": pair[0], "target": pair[1]})
         except Exception as exc:
-            report["install_errors"].append({"source": pair[0], "target": pair[1], "error": str(exc)})
+            report["install_errors"].append(
+                {"source": pair[0], "target": pair[1], "error": str(exc)}
+            )
     return report

@@ -39,7 +39,9 @@ def normalize_lang(lang: str) -> str:
     return LANG_ALIASES.get(lang, lang)
 
 
-def http_get_json(url: str, params: dict[str, Any] | None = None, timeout: int = 12) -> HttpResult:
+def http_get_json(
+    url: str, params: dict[str, Any] | None = None, timeout: int = 12
+) -> HttpResult:
     start = time.perf_counter()
     try:
         resp = SESSION.get(url, params=params, timeout=timeout)
@@ -70,7 +72,9 @@ def http_get_json(url: str, params: dict[str, Any] | None = None, timeout: int =
         )
 
 
-def http_get_text(url: str, params: dict[str, Any] | None = None, timeout: int = 12) -> HttpResult:
+def http_get_text(
+    url: str, params: dict[str, Any] | None = None, timeout: int = 12
+) -> HttpResult:
     start = time.perf_counter()
     try:
         resp = SESSION.get(url, params=params, timeout=timeout)

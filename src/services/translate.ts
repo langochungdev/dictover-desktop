@@ -1,21 +1,23 @@
-import { invokeWithFallback, sidecarPost } from '@/services/tauri'
+import { invokeWithFallback, sidecarPost } from "@/services/tauri";
 
 export interface TranslateResult {
-  result: string
-  engine: string
-  mode: string
+  result: string;
+  engine: string;
+  mode: string;
 }
 
 export interface TranslateRequest {
-  text: string
-  source: string
-  target: string
+  text: string;
+  source: string;
+  target: string;
 }
 
-export async function translateText(request: TranslateRequest): Promise<TranslateResult> {
+export async function translateText(
+  request: TranslateRequest,
+): Promise<TranslateResult> {
   return invokeWithFallback<TranslateResult>(
-    'translate_text',
+    "translate_text",
     { payload: request },
-    async () => sidecarPost<TranslateResult>('/translate', request)
-  )
+    async () => sidecarPost<TranslateResult>("/translate", request),
+  );
 }

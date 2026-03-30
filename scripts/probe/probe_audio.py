@@ -5,7 +5,13 @@ import shutil
 from typing import Any
 from urllib.parse import parse_qsl, urlencode, urlparse, urlunparse
 
-from common import dump_json, http_get_json, normalize_lang, probe_binary_url, safe_quote
+from common import (
+    dump_json,
+    http_get_json,
+    normalize_lang,
+    probe_binary_url,
+    safe_quote,
+)
 
 
 SAMPLES = [
@@ -31,7 +37,9 @@ def scan_audio_url(payload: Any) -> str | None:
                 return found
     elif isinstance(payload, str):
         low = payload.lower()
-        if payload.startswith("http") and (".mp3" in low or ".ogg" in low or "tts" in low):
+        if payload.startswith("http") and (
+            ".mp3" in low or ".ogg" in low or "tts" in low
+        ):
             return payload
     return None
 
@@ -41,25 +49,49 @@ def lookup_audio_url(word: str, lang: str) -> dict[str, Any]:
         url = f"https://api.dictionaryapi.dev/api/v2/entries/en/{safe_quote(word)}"
         res = http_get_json(url)
         audio_url = None
-        if isinstance(res.json_data, list) and res.json_data and isinstance(res.json_data[0], dict):
+        if (
+            isinstance(res.json_data, list)
+            and res.json_data
+            and isinstance(res.json_data[0], dict)
+        ):
             for phonetic in res.json_data[0].get("phonetics", []):
                 if isinstance(phonetic, dict) and phonetic.get("audio"):
                     audio_url = phonetic["audio"]
                     break
-        return {"provider": "dictionaryapi.dev", "status_code": res.status_code, "audio_url": audio_url}
+        return {
+            "provider": "dictionaryapi.dev",
+            "status_code": res.status_code,
+            "audio_url": audio_url,
+        }
     domain = normalize_lang(lang)
     urls = [
-        (f"{domain}.wiktionary.org", f"https://{domain}.wiktionary.org/api/rest_v1/page/definition/{safe_quote(word)}"),
-        ("en.wiktionary.org", f"https://en.wiktionary.org/api/rest_v1/page/definition/{safe_quote(word)}"),
+        (
+            f"{domain}.wiktionary.org",
+            f"https://{domain}.wiktionary.org/api/rest_v1/page/definition/{safe_quote(word)}",
+        ),
+        (
+            "en.wiktionary.org",
+            f"https://en.wiktionary.org/api/rest_v1/page/definition/{safe_quote(word)}",
+        ),
     ]
     attempts = []
     selected = None
     for host, url in urls:
         res = http_get_json(url)
         audio_url = scan_audio_url(res.json_data)
-        attempts.append({"host": host, "status_code": res.status_code, "audio_found": bool(audio_url)})
+        attempts.append(
+            {
+                "host": host,
+                "status_code": res.status_code,
+                "audio_found": bool(audio_url),
+            }
+        )
         if res.ok and audio_url and selected is None:
-            selected = {"provider": f"wiktionary-rest:{host}", "status_code": res.status_code, "audio_url": audio_url}
+            selected = {
+                "provider": f"wiktionary-rest:{host}",
+                "status_code": res.status_code,
+                "audio_url": audio_url,
+            }
     if selected:
         selected["attempts"] = attempts
         return selected

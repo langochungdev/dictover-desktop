@@ -85,7 +85,7 @@ def wikipedia_exact_title_probe(query: str) -> dict[str, Any]:
     )
     exact = None
     if isinstance(res.json_data, dict):
-        pages = ((res.json_data.get("query") or {}).get("pages") or {})
+        pages = (res.json_data.get("query") or {}).get("pages") or {}
         if isinstance(pages, dict):
             for page in pages.values():
                 if isinstance(page, dict) and page.get("pageid"):
@@ -142,7 +142,11 @@ def ui_logic_probe() -> dict[str, Any]:
         {"distance_to_bottom": 260, "load_more": 260 <= threshold},
         {"distance_to_bottom": 120, "load_more": 120 <= threshold},
     ]
-    return {"ttl_seconds": ttl_seconds, "cache_checks": checks, "infinite_scroll_checks": scroll}
+    return {
+        "ttl_seconds": ttl_seconds,
+        "cache_checks": checks,
+        "infinite_scroll_checks": scroll,
+    }
 
 
 def main() -> None:

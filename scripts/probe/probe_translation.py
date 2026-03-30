@@ -99,7 +99,8 @@ def build_argos_matrix(argos: ArgosEngine) -> list[dict[str, Any]]:
                 "source": source,
                 "target": target,
                 "direct": argos.supports_direct(source, target),
-                "pivot_via_en": (not argos.supports_direct(source, target)) and argos.supports_pivot(source, target),
+                "pivot_via_en": (not argos.supports_direct(source, target))
+                and argos.supports_pivot(source, target),
             }
         )
     return matrix
@@ -108,14 +109,22 @@ def build_argos_matrix(argos: ArgosEngine) -> list[dict[str, Any]]:
 def prepare_argos() -> tuple[ArgosEngine, dict[str, Any]]:
     argos = ArgosEngine()
     if not argos.available:
-        return argos, {"attempted": 0, "installed": [], "missing_in_index": [], "install_errors": [], "error": argos.error}
+        return argos, {
+            "attempted": 0,
+            "installed": [],
+            "missing_in_index": [],
+            "install_errors": [],
+            "error": argos.error,
+        }
     required = set()
     for lang in LANGS:
         if lang == "en":
             continue
         required.add((normalize_lang(lang), "en"))
         required.add(("en", normalize_lang(lang)))
-    report = install_required_argos_pairs(sorted(required), set(argos.installed_pairs()))
+    report = install_required_argos_pairs(
+        sorted(required), set(argos.installed_pairs())
+    )
     refreshed = ArgosEngine()
     return refreshed, report
 
