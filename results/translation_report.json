@@ -1,0 +1,1057 @@
+{
+  "generated_at": "2026-03-30T12:05:41.275949+00:00",
+  "argos": {
+    "available": true,
+    "error": null,
+    "bootstrap": {
+      "attempted": 1,
+      "installed": [
+        {
+          "source": "vi",
+          "target": "en"
+        }
+      ],
+      "missing_in_index": [],
+      "install_errors": [],
+      "error": null
+    },
+    "installed_pairs": [
+      [
+        "de",
+        "en"
+      ],
+      [
+        "en",
+        "de"
+      ],
+      [
+        "en",
+        "fi"
+      ],
+      [
+        "en",
+        "fr"
+      ],
+      [
+        "en",
+        "ja"
+      ],
+      [
+        "en",
+        "ko"
+      ],
+      [
+        "en",
+        "ru"
+      ],
+      [
+        "en",
+        "vi"
+      ],
+      [
+        "en",
+        "zh"
+      ],
+      [
+        "fi",
+        "en"
+      ],
+      [
+        "fr",
+        "en"
+      ],
+      [
+        "ja",
+        "en"
+      ],
+      [
+        "ko",
+        "en"
+      ],
+      [
+        "ru",
+        "en"
+      ],
+      [
+        "vi",
+        "en"
+      ],
+      [
+        "zh",
+        "en"
+      ]
+    ],
+    "matrix": [
+      {
+        "source": "vi",
+        "target": "en",
+        "direct": true,
+        "pivot_via_en": false
+      },
+      {
+        "source": "vi",
+        "target": "zh-CN",
+        "direct": false,
+        "pivot_via_en": true
+      },
+      {
+        "source": "vi",
+        "target": "ja",
+        "direct": false,
+        "pivot_via_en": true
+      },
+      {
+        "source": "vi",
+        "target": "ko",
+        "direct": false,
+        "pivot_via_en": true
+      },
+      {
+        "source": "vi",
+        "target": "ru",
+        "direct": false,
+        "pivot_via_en": true
+      },
+      {
+        "source": "vi",
+        "target": "de",
+        "direct": false,
+        "pivot_via_en": true
+      },
+      {
+        "source": "vi",
+        "target": "fr",
+        "direct": false,
+        "pivot_via_en": true
+      },
+      {
+        "source": "vi",
+        "target": "fi",
+        "direct": false,
+        "pivot_via_en": true
+      },
+      {
+        "source": "en",
+        "target": "vi",
+        "direct": true,
+        "pivot_via_en": false
+      },
+      {
+        "source": "en",
+        "target": "zh-CN",
+        "direct": true,
+        "pivot_via_en": false
+      },
+      {
+        "source": "en",
+        "target": "ja",
+        "direct": true,
+        "pivot_via_en": false
+      },
+      {
+        "source": "en",
+        "target": "ko",
+        "direct": true,
+        "pivot_via_en": false
+      },
+      {
+        "source": "en",
+        "target": "ru",
+        "direct": true,
+        "pivot_via_en": false
+      },
+      {
+        "source": "en",
+        "target": "de",
+        "direct": true,
+        "pivot_via_en": false
+      },
+      {
+        "source": "en",
+        "target": "fr",
+        "direct": true,
+        "pivot_via_en": false
+      },
+      {
+        "source": "en",
+        "target": "fi",
+        "direct": true,
+        "pivot_via_en": false
+      },
+      {
+        "source": "zh-CN",
+        "target": "vi",
+        "direct": false,
+        "pivot_via_en": true
+      },
+      {
+        "source": "zh-CN",
+        "target": "en",
+        "direct": true,
+        "pivot_via_en": false
+      },
+      {
+        "source": "zh-CN",
+        "target": "ja",
+        "direct": false,
+        "pivot_via_en": true
+      },
+      {
+        "source": "zh-CN",
+        "target": "ko",
+        "direct": false,
+        "pivot_via_en": true
+      },
+      {
+        "source": "zh-CN",
+        "target": "ru",
+        "direct": false,
+        "pivot_via_en": true
+      },
+      {
+        "source": "zh-CN",
+        "target": "de",
+        "direct": false,
+        "pivot_via_en": true
+      },
+      {
+        "source": "zh-CN",
+        "target": "fr",
+        "direct": false,
+        "pivot_via_en": true
+      },
+      {
+        "source": "zh-CN",
+        "target": "fi",
+        "direct": false,
+        "pivot_via_en": true
+      },
+      {
+        "source": "ja",
+        "target": "vi",
+        "direct": false,
+        "pivot_via_en": true
+      },
+      {
+        "source": "ja",
+        "target": "en",
+        "direct": true,
+        "pivot_via_en": false
+      },
+      {
+        "source": "ja",
+        "target": "zh-CN",
+        "direct": false,
+        "pivot_via_en": true
+      },
+      {
+        "source": "ja",
+        "target": "ko",
+        "direct": false,
+        "pivot_via_en": true
+      },
+      {
+        "source": "ja",
+        "target": "ru",
+        "direct": false,
+        "pivot_via_en": true
+      },
+      {
+        "source": "ja",
+        "target": "de",
+        "direct": false,
+        "pivot_via_en": true
+      },
+      {
+        "source": "ja",
+        "target": "fr",
+        "direct": false,
+        "pivot_via_en": true
+      },
+      {
+        "source": "ja",
+        "target": "fi",
+        "direct": false,
+        "pivot_via_en": true
+      },
+      {
+        "source": "ko",
+        "target": "vi",
+        "direct": false,
+        "pivot_via_en": true
+      },
+      {
+        "source": "ko",
+        "target": "en",
+        "direct": true,
+        "pivot_via_en": false
+      },
+      {
+        "source": "ko",
+        "target": "zh-CN",
+        "direct": false,
+        "pivot_via_en": true
+      },
+      {
+        "source": "ko",
+        "target": "ja",
+        "direct": false,
+        "pivot_via_en": true
+      },
+      {
+        "source": "ko",
+        "target": "ru",
+        "direct": false,
+        "pivot_via_en": true
+      },
+      {
+        "source": "ko",
+        "target": "de",
+        "direct": false,
+        "pivot_via_en": true
+      },
+      {
+        "source": "ko",
+        "target": "fr",
+        "direct": false,
+        "pivot_via_en": true
+      },
+      {
+        "source": "ko",
+        "target": "fi",
+        "direct": false,
+        "pivot_via_en": true
+      },
+      {
+        "source": "ru",
+        "target": "vi",
+        "direct": false,
+        "pivot_via_en": true
+      },
+      {
+        "source": "ru",
+        "target": "en",
+        "direct": true,
+        "pivot_via_en": false
+      },
+      {
+        "source": "ru",
+        "target": "zh-CN",
+        "direct": false,
+        "pivot_via_en": true
+      },
+      {
+        "source": "ru",
+        "target": "ja",
+        "direct": false,
+        "pivot_via_en": true
+      },
+      {
+        "source": "ru",
+        "target": "ko",
+        "direct": false,
+        "pivot_via_en": true
+      },
+      {
+        "source": "ru",
+        "target": "de",
+        "direct": false,
+        "pivot_via_en": true
+      },
+      {
+        "source": "ru",
+        "target": "fr",
+        "direct": false,
+        "pivot_via_en": true
+      },
+      {
+        "source": "ru",
+        "target": "fi",
+        "direct": false,
+        "pivot_via_en": true
+      },
+      {
+        "source": "de",
+        "target": "vi",
+        "direct": false,
+        "pivot_via_en": true
+      },
+      {
+        "source": "de",
+        "target": "en",
+        "direct": true,
+        "pivot_via_en": false
+      },
+      {
+        "source": "de",
+        "target": "zh-CN",
+        "direct": false,
+        "pivot_via_en": true
+      },
+      {
+        "source": "de",
+        "target": "ja",
+        "direct": false,
+        "pivot_via_en": true
+      },
+      {
+        "source": "de",
+        "target": "ko",
+        "direct": false,
+        "pivot_via_en": true
+      },
+      {
+        "source": "de",
+        "target": "ru",
+        "direct": false,
+        "pivot_via_en": true
+      },
+      {
+        "source": "de",
+        "target": "fr",
+        "direct": false,
+        "pivot_via_en": true
+      },
+      {
+        "source": "de",
+        "target": "fi",
+        "direct": false,
+        "pivot_via_en": true
+      },
+      {
+        "source": "fr",
+        "target": "vi",
+        "direct": false,
+        "pivot_via_en": true
+      },
+      {
+        "source": "fr",
+        "target": "en",
+        "direct": true,
+        "pivot_via_en": false
+      },
+      {
+        "source": "fr",
+        "target": "zh-CN",
+        "direct": false,
+        "pivot_via_en": true
+      },
+      {
+        "source": "fr",
+        "target": "ja",
+        "direct": false,
+        "pivot_via_en": true
+      },
+      {
+        "source": "fr",
+        "target": "ko",
+        "direct": false,
+        "pivot_via_en": true
+      },
+      {
+        "source": "fr",
+        "target": "ru",
+        "direct": false,
+        "pivot_via_en": true
+      },
+      {
+        "source": "fr",
+        "target": "de",
+        "direct": false,
+        "pivot_via_en": true
+      },
+      {
+        "source": "fr",
+        "target": "fi",
+        "direct": false,
+        "pivot_via_en": true
+      },
+      {
+        "source": "fi",
+        "target": "vi",
+        "direct": false,
+        "pivot_via_en": true
+      },
+      {
+        "source": "fi",
+        "target": "en",
+        "direct": true,
+        "pivot_via_en": false
+      },
+      {
+        "source": "fi",
+        "target": "zh-CN",
+        "direct": false,
+        "pivot_via_en": true
+      },
+      {
+        "source": "fi",
+        "target": "ja",
+        "direct": false,
+        "pivot_via_en": true
+      },
+      {
+        "source": "fi",
+        "target": "ko",
+        "direct": false,
+        "pivot_via_en": true
+      },
+      {
+        "source": "fi",
+        "target": "ru",
+        "direct": false,
+        "pivot_via_en": true
+      },
+      {
+        "source": "fi",
+        "target": "de",
+        "direct": false,
+        "pivot_via_en": true
+      },
+      {
+        "source": "fi",
+        "target": "fr",
+        "direct": false,
+        "pivot_via_en": true
+      }
+    ],
+    "benchmarks": {
+      "vi->en": {
+        "word": {
+          "ok": true,
+          "latency_ms": 4483.95,
+          "mode": "direct",
+          "output_preview": "Hello.",
+          "output_len": 6,
+          "error": null
+        },
+        "sentence": {
+          "ok": true,
+          "latency_ms": 98.95,
+          "mode": "direct",
+          "output_preview": "The weather is so good today, I want to go for a walk.",
+          "output_len": 54,
+          "error": null
+        },
+        "paragraph_100w": {
+          "ok": true,
+          "latency_ms": 445.61,
+          "mode": "direct",
+          "output_preview": "The weather is so good today, I want to go for a walk. The weather is so good today, I want to go for a walk. The weather is so good today, I want to go for a w",
+          "output_len": 439,
+          "error": null
+        }
+      },
+      "vi->ja": {
+        "word": {
+          "ok": true,
+          "latency_ms": 8196.83,
+          "mode": "pivot",
+          "output_preview": "お問い合わせ",
+          "output_len": 6,
+          "error": null
+        },
+        "sentence": {
+          "ok": true,
+          "latency_ms": 198.69,
+          "mode": "pivot",
+          "output_preview": "今日は天気が良く、散歩に行きたい。",
+          "output_len": 17,
+          "error": null
+        },
+        "paragraph_100w": {
+          "ok": true,
+          "latency_ms": 877.71,
+          "mode": "pivot",
+          "output_preview": "今日は天気が良く、散歩に行きたい。 今日は天気が良く、散歩に行きたい。 今日は天気が良く、散歩に行きたい。 今日は天気が良く、散歩に行きたい。 今日は天気が良く、散歩に行きたい。 今日は天気が良く、散歩に行きたい。 今日は天気が良く、散歩に行きたい。 今日は天気が良く、散歩に行きたい。",
+          "output_len": 143,
+          "error": null
+        }
+      },
+      "vi->fi": {
+        "word": {
+          "ok": true,
+          "latency_ms": 4928.93,
+          "mode": "pivot",
+          "output_preview": "Hei.",
+          "output_len": 4,
+          "error": null
+        },
+        "sentence": {
+          "ok": true,
+          "latency_ms": 204.87,
+          "mode": "pivot",
+          "output_preview": "Sää on niin hyvä, että haluan kävelylle.",
+          "output_len": 40,
+          "error": null
+        },
+        "paragraph_100w": {
+          "ok": true,
+          "latency_ms": 931.04,
+          "mode": "pivot",
+          "output_preview": "Sää on niin hyvä, että haluan kävelylle. Sää on niin hyvä, että haluan kävelylle. Sää on niin hyvä, että haluan kävelylle. Sää on niin hyvä, että haluan kävelyl",
+          "output_len": 327,
+          "error": null
+        }
+      },
+      "zh-CN->ko": {
+        "word": {
+          "ok": true,
+          "latency_ms": 1564.34,
+          "mode": "pivot",
+          "output_preview": "안녕하세요.",
+          "output_len": 6,
+          "error": null
+        },
+        "sentence": {
+          "ok": true,
+          "latency_ms": 244.84,
+          "mode": "pivot",
+          "output_preview": "좋은 날입니다. 산책을하고 싶습니다.",
+          "output_len": 20,
+          "error": null
+        },
+        "paragraph_100w": {
+          "ok": true,
+          "latency_ms": 872.51,
+          "mode": "pivot",
+          "output_preview": "좋은 날입니다. 산책을하고 싶습니다. 좋은 날입니다. 산책을하고 싶습니다. 좋은 날입니다. 산책을하고 싶습니다. 좋은 날입니다. 산책을하고 싶습니다. 좋은 날입니다. 산책을하고 싶습니다. 좋은 날입니다. 산책을하고 싶습니다. 좋은 날입니다. 산책을하고 싶습니다. 좋은 날입니다. 산책을하",
+          "output_len": 167,
+          "error": null
+        }
+      },
+      "ja->ru": {
+        "word": {
+          "ok": true,
+          "latency_ms": 1938.26,
+          "mode": "pivot",
+          "output_preview": "Привет!",
+          "output_len": 7,
+          "error": null
+        },
+        "sentence": {
+          "ok": true,
+          "latency_ms": 325.98,
+          "mode": "pivot",
+          "output_preview": "Я хочу прогуляться из-за погоды.",
+          "output_len": 32,
+          "error": null
+        },
+        "paragraph_100w": {
+          "ok": true,
+          "latency_ms": 1438.38,
+          "mode": "pivot",
+          "output_preview": "Я хочу прогуляться из-за погоды. Я хочу прогуляться из-за погоды. Я хочу прогуляться из-за погоды. Я хочу прогуляться из-за погоды. Я хочу прогуляться из-за пог",
+          "output_len": 263,
+          "error": null
+        }
+      },
+      "en->vi": {
+        "word": {
+          "ok": true,
+          "latency_ms": 721.31,
+          "mode": "direct",
+          "output_preview": "Xin chào",
+          "output_len": 8,
+          "error": null
+        },
+        "sentence": {
+          "ok": true,
+          "latency_ms": 85.9,
+          "mode": "direct",
+          "output_preview": "Con cáo màu nâu nhanh chóng nhảy qua con chó lười biếng.",
+          "output_len": 56,
+          "error": null
+        },
+        "paragraph_100w": {
+          "ok": true,
+          "latency_ms": 397.13,
+          "mode": "direct",
+          "output_preview": "Con cáo màu nâu nhanh chóng nhảy qua con chó lười biếng. Con cáo màu nâu nhanh chóng nhảy qua con chó lười biếng. Con cáo màu nâu nhanh chóng nhảy qua con chó l",
+          "output_len": 455,
+          "error": null
+        }
+      }
+    },
+    "long_text": {
+      "input_chars": 791,
+      "ok": true,
+      "output_len": 989,
+      "latency_ms": 1545.15,
+      "mode": "direct",
+      "error": null
+    }
+  },
+  "nllb": {
+    "available": true,
+    "error": null,
+    "model_id": "facebook/nllb-200-distilled-600M",
+    "load_ms": 9978.87,
+    "memory_before_mb": 1508.86,
+    "memory_after_mb": 1014.23,
+    "benchmarks": {
+      "vi->en": {
+        "word": {
+          "ok": true,
+          "latency_ms": 4895.71,
+          "mode": "direct",
+          "output_preview": "Hello, this is the first time.",
+          "output_len": 30,
+          "error": null
+        },
+        "sentence": {
+          "ok": true,
+          "latency_ms": 3423.15,
+          "mode": "direct",
+          "output_preview": "Today the weather is beautiful, I want to go for a walk.",
+          "output_len": 56,
+          "error": null
+        },
+        "paragraph_100w": {
+          "ok": true,
+          "latency_ms": 6777.85,
+          "mode": "direct",
+          "output_preview": "Today the weather is beautiful, I want to go for a walk. Today the weather is beautiful, I want to go for a walk. Today the weather is beautiful, I want to go f",
+          "output_len": 227,
+          "error": null
+        }
+      },
+      "vi->ja": {
+        "word": {
+          "ok": true,
+          "latency_ms": 933.24,
+          "mode": "direct",
+          "output_preview": "平安の挨拶です.",
+          "output_len": 8,
+          "error": null
+        },
+        "sentence": {
+          "ok": true,
+          "latency_ms": 1594.36,
+          "mode": "direct",
+          "output_preview": "今日は天気が晴れていて,散歩したい.",
+          "output_len": 18,
+          "error": null
+        },
+        "paragraph_100w": {
+          "ok": true,
+          "latency_ms": 26679.59,
+          "mode": "direct",
+          "output_preview": "今日は晴れです. 散歩したいです. 今日は晴れです. 散歩したいです. 今日は晴れです. 散歩したいです. 今日は晴れです. 散歩したいです. 散歩したいです. 散歩したいです. 散歩したいです. 散歩したいです. 散歩したいです. 散歩したいです. 散歩したいです. 散歩したいです. 散歩したいです. 散歩したいです",
+          "output_len": 359,
+          "error": null
+        }
+      },
+      "vi->fi": {
+        "word": {
+          "ok": true,
+          "latency_ms": 1112.99,
+          "mode": "direct",
+          "output_preview": "Hei, xin hei, ",
+          "output_len": 14,
+          "error": null
+        },
+        "sentence": {
+          "ok": true,
+          "latency_ms": 1760.81,
+          "mode": "direct",
+          "output_preview": "Ilmasto on kaunis, haluan kävellä.",
+          "output_len": 34,
+          "error": null
+        },
+        "paragraph_100w": {
+          "ok": true,
+          "latency_ms": 11974.13,
+          "mode": "direct",
+          "output_preview": "Tänään sää on kaunis, haluan kävellä. Tänään sää on kaunis, haluan kävellä. Tänään sää on kaunis, haluan kävellä. Tänään sää on kaunis, haluan kävellä. Tänään s",
+          "output_len": 341,
+          "error": null
+        }
+      },
+      "zh-CN->ko": {
+        "word": {
+          "ok": true,
+          "latency_ms": 624.28,
+          "mode": "direct",
+          "output_preview": "안녕하세요.",
+          "output_len": 6,
+          "error": null
+        },
+        "sentence": {
+          "ok": true,
+          "latency_ms": 2521.13,
+          "mode": "direct",
+          "output_preview": "날씨가 좋아서 나서는 안 될 것 같아서, 나서는 안 될 것 같습니다.",
+          "output_len": 38,
+          "error": null
+        },
+        "paragraph_100w": {
+          "ok": true,
+          "latency_ms": 12631.05,
+          "mode": "direct",
+          "output_preview": "날씨가 좋아서 나가고 싶네요. 오늘 날씨가 좋아서 나가고 싶네요. 오늘 날씨가 좋아서 나가고 싶네요. 오늘 날씨가 좋아서 나가고 싶네요. 오늘 날씨가 좋아서 나가고 싶네요. 오늘 날씨가 좋아서 나가고 싶네요. 오늘 날씨가 좋아서 나가고 싶네요. 오늘 날씨가 좋아서 나가고 싶네요. 오늘 ",
+          "output_len": 228,
+          "error": null
+        }
+      },
+      "ja->ru": {
+        "word": {
+          "ok": true,
+          "latency_ms": 911.46,
+          "mode": "direct",
+          "output_preview": "Привет, пожалуйста.",
+          "output_len": 19,
+          "error": null
+        },
+        "sentence": {
+          "ok": true,
+          "latency_ms": 2050.91,
+          "mode": "direct",
+          "output_preview": "Сегодня очень хорошее время, я хочу пойти на прогулку.",
+          "output_len": 54,
+          "error": null
+        },
+        "paragraph_100w": {
+          "ok": true,
+          "latency_ms": 33760.01,
+          "mode": "direct",
+          "output_preview": "Сегодня очень хорошее время, сегодня очень хорошее время, сегодня очень хорошее время, сегодня очень хорошее время, сегодня очень хорошее время, сегодня очень х",
+          "output_len": 1552,
+          "error": null
+        }
+      },
+      "en->vi": {
+        "word": {
+          "ok": true,
+          "latency_ms": 420.09,
+          "mode": "direct",
+          "output_preview": "Hello",
+          "output_len": 5,
+          "error": null
+        },
+        "sentence": {
+          "ok": true,
+          "latency_ms": 1550.07,
+          "mode": "direct",
+          "output_preview": "Con cáo nâu nhanh chóng nhảy qua con chó lười biếng.",
+          "output_len": 52,
+          "error": null
+        },
+        "paragraph_100w": {
+          "ok": true,
+          "latency_ms": 10280.15,
+          "mode": "direct",
+          "output_preview": "Con cáo nâu nhanh nhảy trên con chó lười biếng. Con cáo nâu nhanh nhảy trên con chó lười biếng. Con cáo nâu nhanh nhảy trên con chó lười biếng. Con cáo nâu nhan",
+          "output_len": 431,
+          "error": null
+        }
+      }
+    },
+    "long_text": {
+      "input_chars": 791,
+      "ok": true,
+      "output_len": 1310,
+      "latency_ms": 24695.04,
+      "mode": "direct",
+      "error": null
+    }
+  },
+  "auto_detect": {
+    "available": true,
+    "error": null,
+    "accuracy": 1.0,
+    "results": [
+      {
+        "expected": "vi",
+        "detected": "vi",
+        "matched": true
+      },
+      {
+        "expected": "en",
+        "detected": "en",
+        "matched": true
+      },
+      {
+        "expected": "zh-CN",
+        "detected": "zh-cn",
+        "matched": true
+      },
+      {
+        "expected": "ja",
+        "detected": "ja",
+        "matched": true
+      },
+      {
+        "expected": "ko",
+        "detected": "ko",
+        "matched": true
+      },
+      {
+        "expected": "ru",
+        "detected": "ru",
+        "matched": true
+      },
+      {
+        "expected": "de",
+        "detected": "de",
+        "matched": true
+      },
+      {
+        "expected": "fr",
+        "detected": "fr",
+        "matched": true
+      },
+      {
+        "expected": "fi",
+        "detected": "fi",
+        "matched": true
+      }
+    ]
+  },
+  "comparisons": [
+    {
+      "pair": "vi->en",
+      "input_type": "word",
+      "argos_ok": true,
+      "argos_latency_ms": 4483.95,
+      "nllb_ok": true,
+      "nllb_latency_ms": 4895.71
+    },
+    {
+      "pair": "vi->en",
+      "input_type": "sentence",
+      "argos_ok": true,
+      "argos_latency_ms": 98.95,
+      "nllb_ok": true,
+      "nllb_latency_ms": 3423.15
+    },
+    {
+      "pair": "vi->en",
+      "input_type": "paragraph_100w",
+      "argos_ok": true,
+      "argos_latency_ms": 445.61,
+      "nllb_ok": true,
+      "nllb_latency_ms": 6777.85
+    },
+    {
+      "pair": "vi->ja",
+      "input_type": "word",
+      "argos_ok": true,
+      "argos_latency_ms": 8196.83,
+      "nllb_ok": true,
+      "nllb_latency_ms": 933.24
+    },
+    {
+      "pair": "vi->ja",
+      "input_type": "sentence",
+      "argos_ok": true,
+      "argos_latency_ms": 198.69,
+      "nllb_ok": true,
+      "nllb_latency_ms": 1594.36
+    },
+    {
+      "pair": "vi->ja",
+      "input_type": "paragraph_100w",
+      "argos_ok": true,
+      "argos_latency_ms": 877.71,
+      "nllb_ok": true,
+      "nllb_latency_ms": 26679.59
+    },
+    {
+      "pair": "vi->fi",
+      "input_type": "word",
+      "argos_ok": true,
+      "argos_latency_ms": 4928.93,
+      "nllb_ok": true,
+      "nllb_latency_ms": 1112.99
+    },
+    {
+      "pair": "vi->fi",
+      "input_type": "sentence",
+      "argos_ok": true,
+      "argos_latency_ms": 204.87,
+      "nllb_ok": true,
+      "nllb_latency_ms": 1760.81
+    },
+    {
+      "pair": "vi->fi",
+      "input_type": "paragraph_100w",
+      "argos_ok": true,
+      "argos_latency_ms": 931.04,
+      "nllb_ok": true,
+      "nllb_latency_ms": 11974.13
+    },
+    {
+      "pair": "zh-CN->ko",
+      "input_type": "word",
+      "argos_ok": true,
+      "argos_latency_ms": 1564.34,
+      "nllb_ok": true,
+      "nllb_latency_ms": 624.28
+    },
+    {
+      "pair": "zh-CN->ko",
+      "input_type": "sentence",
+      "argos_ok": true,
+      "argos_latency_ms": 244.84,
+      "nllb_ok": true,
+      "nllb_latency_ms": 2521.13
+    },
+    {
+      "pair": "zh-CN->ko",
+      "input_type": "paragraph_100w",
+      "argos_ok": true,
+      "argos_latency_ms": 872.51,
+      "nllb_ok": true,
+      "nllb_latency_ms": 12631.05
+    },
+    {
+      "pair": "ja->ru",
+      "input_type": "word",
+      "argos_ok": true,
+      "argos_latency_ms": 1938.26,
+      "nllb_ok": true,
+      "nllb_latency_ms": 911.46
+    },
+    {
+      "pair": "ja->ru",
+      "input_type": "sentence",
+      "argos_ok": true,
+      "argos_latency_ms": 325.98,
+      "nllb_ok": true,
+      "nllb_latency_ms": 2050.91
+    },
+    {
+      "pair": "ja->ru",
+      "input_type": "paragraph_100w",
+      "argos_ok": true,
+      "argos_latency_ms": 1438.38,
+      "nllb_ok": true,
+      "nllb_latency_ms": 33760.01
+    },
+    {
+      "pair": "en->vi",
+      "input_type": "word",
+      "argos_ok": true,
+      "argos_latency_ms": 721.31,
+      "nllb_ok": true,
+      "nllb_latency_ms": 420.09
+    },
+    {
+      "pair": "en->vi",
+      "input_type": "sentence",
+      "argos_ok": true,
+      "argos_latency_ms": 85.9,
+      "nllb_ok": true,
+      "nllb_latency_ms": 1550.07
+    },
+    {
+      "pair": "en->vi",
+      "input_type": "paragraph_100w",
+      "argos_ok": true,
+      "argos_latency_ms": 397.13,
+      "nllb_ok": true,
+      "nllb_latency_ms": 10280.15
+    }
+  ]
+}

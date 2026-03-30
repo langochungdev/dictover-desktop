@@ -1,0 +1,193 @@
+{
+  "generated_at": "2026-03-30T12:06:40.603370+00:00",
+  "fallback_chain": [
+    "html5_audio",
+    "google_url_swap",
+    "native_audio",
+    "speech_synthesis"
+  ],
+  "native_audio": {
+    "mpv": false,
+    "ffplay": false
+  },
+  "speech_synthesis_probe": {
+    "status": "manual-check-required",
+    "reason": "Web Speech API needs runtime check inside Tauri WebView2/WebKitGTK"
+  },
+  "google_swap_regex_probe": [
+    {
+      "url": "https://translate.google.com/translate_tts?ie=UTF-8&q=hello&tl=en&client=gtx",
+      "probe": {
+        "ok": true,
+        "status_code": 200,
+        "latency_ms": 492.16,
+        "content_type": "audio/mpeg",
+        "final_url": "https://translate.google.com/translate_tts?ie=UTF-8&q=hello&tl=en&client=gtx",
+        "error": null
+      }
+    },
+    {
+      "url": "https://translate.googleapis.com/translate_tts?ie=UTF-8&q=hello&tl=en&client=gtx",
+      "probe": {
+        "ok": true,
+        "status_code": 200,
+        "latency_ms": 379.71,
+        "content_type": "audio/mpeg",
+        "final_url": "https://translate.googleapis.com/translate_tts?ie=UTF-8&q=hello&tl=en&client=gtx",
+        "error": null
+      }
+    },
+    {
+      "url": "https://translate.googleapis.com/translate_tts?ie=UTF-8&q=hello&tl=en&client=tw-ob",
+      "probe": {
+        "ok": true,
+        "status_code": 200,
+        "latency_ms": 352.12,
+        "content_type": "audio/mpeg",
+        "final_url": "https://translate.googleapis.com/translate_tts?ie=UTF-8&q=hello&tl=en&client=tw-ob",
+        "error": null
+      }
+    }
+  ],
+  "cases": [
+    {
+      "word": "hello",
+      "source_lang": "en",
+      "lookup": {
+        "provider": "dictionaryapi.dev",
+        "status_code": 200,
+        "audio_url": "https://api.dictionaryapi.dev/media/pronunciations/en/hello-au.mp3"
+      },
+      "primary_probe": {
+        "ok": true,
+        "status_code": 206,
+        "latency_ms": 65.08,
+        "content_type": "audio/mpeg",
+        "final_url": "https://api.dictionaryapi.dev/media/pronunciations/en/hello-au.mp3",
+        "error": null
+      },
+      "swap_retries": [],
+      "chain_result": "html5_audio_ok"
+    },
+    {
+      "word": "xin chào",
+      "source_lang": "vi",
+      "lookup": {
+        "provider": "wiktionary-rest:en.wiktionary.org",
+        "status_code": 200,
+        "audio_url": null,
+        "attempts": [
+          {
+            "host": "vi.wiktionary.org",
+            "status_code": 501,
+            "audio_found": false
+          },
+          {
+            "host": "en.wiktionary.org",
+            "status_code": 200,
+            "audio_found": false
+          }
+        ]
+      },
+      "primary_probe": null,
+      "swap_retries": [],
+      "chain_result": "speech_synthesis_fallback"
+    },
+    {
+      "word": "こんにちは",
+      "source_lang": "ja",
+      "lookup": {
+        "provider": "wiktionary-rest:en.wiktionary.org",
+        "status_code": 404,
+        "audio_url": null,
+        "attempts": [
+          {
+            "host": "ja.wiktionary.org",
+            "status_code": 501,
+            "audio_found": false
+          },
+          {
+            "host": "en.wiktionary.org",
+            "status_code": 404,
+            "audio_found": false
+          }
+        ]
+      },
+      "primary_probe": null,
+      "swap_retries": [],
+      "chain_result": "speech_synthesis_fallback"
+    },
+    {
+      "word": "안녕하세요",
+      "source_lang": "ko",
+      "lookup": {
+        "provider": "wiktionary-rest:en.wiktionary.org",
+        "status_code": 200,
+        "audio_url": null,
+        "attempts": [
+          {
+            "host": "ko.wiktionary.org",
+            "status_code": 501,
+            "audio_found": false
+          },
+          {
+            "host": "en.wiktionary.org",
+            "status_code": 200,
+            "audio_found": false
+          }
+        ]
+      },
+      "primary_probe": null,
+      "swap_retries": [],
+      "chain_result": "speech_synthesis_fallback"
+    },
+    {
+      "word": "привет",
+      "source_lang": "ru",
+      "lookup": {
+        "provider": "wiktionary-rest:en.wiktionary.org",
+        "status_code": 200,
+        "audio_url": null,
+        "attempts": [
+          {
+            "host": "ru.wiktionary.org",
+            "status_code": 501,
+            "audio_found": false
+          },
+          {
+            "host": "en.wiktionary.org",
+            "status_code": 200,
+            "audio_found": false
+          }
+        ]
+      },
+      "primary_probe": null,
+      "swap_retries": [],
+      "chain_result": "speech_synthesis_fallback"
+    },
+    {
+      "word": "你好",
+      "source_lang": "zh-CN",
+      "lookup": {
+        "provider": "wiktionary-rest:en.wiktionary.org",
+        "status_code": 200,
+        "audio_url": null,
+        "attempts": [
+          {
+            "host": "zh.wiktionary.org",
+            "status_code": 501,
+            "audio_found": false
+          },
+          {
+            "host": "en.wiktionary.org",
+            "status_code": 200,
+            "audio_found": false
+          }
+        ]
+      },
+      "primary_probe": null,
+      "swap_retries": [],
+      "chain_result": "speech_synthesis_fallback"
+    }
+  ]
+}

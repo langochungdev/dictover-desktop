@@ -1,0 +1,290 @@
+{
+  "generated_at": "2026-03-30T12:05:56.644655+00:00",
+  "ui_logic": {
+    "ttl_seconds": 480,
+    "cache_checks": [
+      {
+        "at": 1200,
+        "cache_hit": true
+      },
+      {
+        "at": 1600,
+        "cache_hit": false
+      }
+    ],
+    "infinite_scroll_checks": [
+      {
+        "distance_to_bottom": 500,
+        "load_more": false
+      },
+      {
+        "distance_to_bottom": 260,
+        "load_more": true
+      },
+      {
+        "distance_to_bottom": 120,
+        "load_more": true
+      }
+    ]
+  },
+  "cases": [
+    {
+      "query": "cat",
+      "duckduckgo": {
+        "status_code": 200,
+        "latency_ms": 382.7,
+        "ok": true,
+        "image_url": "",
+        "related_topics_count": 9,
+        "error": null
+      },
+      "google_cse": {
+        "enabled": false,
+        "reason": "GOOGLE_CSE_KEY or GOOGLE_CSE_CX missing"
+      },
+      "wikipedia_search": {
+        "status_code": 200,
+        "latency_ms": 877.35,
+        "ok": true,
+        "results": [
+          {
+            "title": "Cat",
+            "score": 5
+          },
+          {
+            "title": "Cat (disambiguation)",
+            "score": 2
+          },
+          {
+            "title": "Cat Stevens",
+            "score": 2
+          },
+          {
+            "title": ".cat",
+            "score": 1
+          },
+          {
+            "title": "Doja Cat",
+            "score": 1
+          },
+          {
+            "title": "Tabby cat",
+            "score": 1
+          },
+          {
+            "title": "Siberian cat",
+            "score": 1
+          },
+          {
+            "title": "Felidae",
+            "score": 0
+          }
+        ],
+        "error": null
+      },
+      "wikipedia_exact": {
+        "status_code": 200,
+        "latency_ms": 374.1,
+        "ok": true,
+        "result": {
+          "title": "Cat",
+          "pageid": 6678,
+          "fullurl": "https://en.wikipedia.org/wiki/Cat",
+          "thumbnail": "https://upload.wikimedia.org/wikipedia/commons/thumb/1/15/Cat_August_2010-4.jpg/500px-Cat_August_2010-4.jpg"
+        },
+        "error": null
+      }
+    },
+    {
+      "query": "xin chào",
+      "duckduckgo": {
+        "status_code": 200,
+        "latency_ms": 99.74,
+        "ok": true,
+        "image_url": "",
+        "related_topics_count": 0,
+        "error": null
+      },
+      "google_cse": {
+        "enabled": false,
+        "reason": "GOOGLE_CSE_KEY or GOOGLE_CSE_CX missing"
+      },
+      "wikipedia_search": {
+        "status_code": 200,
+        "latency_ms": 481.01,
+        "ok": true,
+        "results": [
+          {
+            "title": "Xin dynasty",
+            "score": 1
+          },
+          {
+            "title": "Di Xin",
+            "score": 1
+          },
+          {
+            "title": "The Flaming Heart",
+            "score": 0
+          },
+          {
+            "title": "Say Hi to Pencil!",
+            "score": 0
+          },
+          {
+            "title": "List of VTV dramas broadcast in 2020",
+            "score": 0
+          },
+          {
+            "title": "Bà Tân Vlog",
+            "score": 0
+          },
+          {
+            "title": "List of VTV dramas broadcast in 2019",
+            "score": 0
+          },
+          {
+            "title": "Christine Ha",
+            "score": 0
+          }
+        ],
+        "error": null
+      },
+      "wikipedia_exact": {
+        "status_code": 200,
+        "latency_ms": 375.34,
+        "ok": true,
+        "result": null,
+        "error": null
+      }
+    },
+    {
+      "query": "こんにちは",
+      "duckduckgo": {
+        "status_code": 200,
+        "latency_ms": 93.51,
+        "ok": true,
+        "image_url": "",
+        "related_topics_count": 0,
+        "error": null
+      },
+      "google_cse": {
+        "enabled": false,
+        "reason": "GOOGLE_CSE_KEY or GOOGLE_CSE_CX missing"
+      },
+      "wikipedia_search": {
+        "status_code": 200,
+        "latency_ms": 466.38,
+        "ok": true,
+        "results": [
+          {
+            "title": "Goodbye, Dragon Life",
+            "score": 0
+          },
+          {
+            "title": "Espgaluda",
+            "score": 0
+          },
+          {
+            "title": "Konichiwa Records",
+            "score": 0
+          },
+          {
+            "title": "Kon'nichiwa Anne: Before Green Gables",
+            "score": 0
+          },
+          {
+            "title": ".properties",
+            "score": 0
+          },
+          {
+            "title": "Japan Air Self-Defense Force",
+            "score": 0
+          },
+          {
+            "title": "List of songs featured in Shrek",
+            "score": 0
+          },
+          {
+            "title": "Katakana",
+            "score": 0
+          }
+        ],
+        "error": null
+      },
+      "wikipedia_exact": {
+        "status_code": 200,
+        "latency_ms": 370.03,
+        "ok": true,
+        "result": null,
+        "error": null
+      }
+    },
+    {
+      "query": "bonjour",
+      "duckduckgo": {
+        "status_code": 200,
+        "latency_ms": 88.54,
+        "ok": true,
+        "image_url": "",
+        "related_topics_count": 4,
+        "error": null
+      },
+      "google_cse": {
+        "enabled": false,
+        "reason": "GOOGLE_CSE_KEY or GOOGLE_CSE_CX missing"
+      },
+      "wikipedia_search": {
+        "status_code": 200,
+        "latency_ms": 441.39,
+        "ok": true,
+        "results": [
+          {
+            "title": "Bonjour",
+            "score": 5
+          },
+          {
+            "title": "Bonjour (software)",
+            "score": 2
+          },
+          {
+            "title": "Bonjour Tristesse",
+            "score": 2
+          },
+          {
+            "title": "Bonjour Tristesse (1958 film)",
+            "score": 2
+          },
+          {
+            "title": "Bonjour Biqui, Bonjour!",
+            "score": 2
+          },
+          {
+            "title": "Bonjour Tristesse (2024 film)",
+            "score": 2
+          },
+          {
+            "title": "Bonjour Tristesse (disambiguation)",
+            "score": 2
+          },
+          {
+            "title": "Éric Bonjour",
+            "score": 1
+          }
+        ],
+        "error": null
+      },
+      "wikipedia_exact": {
+        "status_code": 200,
+        "latency_ms": 361.29,
+        "ok": true,
+        "result": {
+          "title": "Bonjour",
+          "pageid": 1054567,
+          "fullurl": "https://en.wikipedia.org/wiki/Bonjour",
+          "thumbnail": null
+        },
+        "error": null
+      }
+    }
+  ]
+}

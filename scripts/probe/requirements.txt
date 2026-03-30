@@ -1,0 +1,7 @@
+requests
+argostranslate
+ctranslate2
+transformers
+sentencepiece
+langdetect
+psutil

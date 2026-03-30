@@ -1,0 +1,457 @@
+{
+  "generated_at": "2026-03-30T12:02:15.798271+00:00",
+  "total_cases": 9,
+  "lookup_success_cases": 8,
+  "cases": [
+    {
+      "word": "hello",
+      "source_lang": "en",
+      "provider": "dictionaryapi.dev",
+      "lookup": {
+        "status_code": 200,
+        "latency_ms": 445.79,
+        "ok": true,
+        "error": null
+      },
+      "lookup_attempts": null,
+      "fields": {
+        "phonetic": false,
+        "meanings": true,
+        "audio_url": true
+      },
+      "audio_url": "https://api.dictionaryapi.dev/media/pronunciations/en/hello-au.mp3",
+      "audio_probe": {
+        "ok": true,
+        "status_code": 206,
+        "latency_ms": 67.68,
+        "content_type": "audio/mpeg",
+        "final_url": "https://api.dictionaryapi.dev/media/pronunciations/en/hello-au.mp3",
+        "error": null
+      },
+      "action_audio_probe": null,
+      "fallback_triggered": false,
+      "fallback": null
+    },
+    {
+      "word": "xin chào",
+      "source_lang": "vi",
+      "provider": "wiktionary-rest:en.wiktionary.org",
+      "lookup": {
+        "status_code": 200,
+        "latency_ms": 428.84,
+        "ok": true,
+        "error": null
+      },
+      "lookup_attempts": [
+        {
+          "host": "vi.wiktionary.org",
+          "status_code": 501,
+          "latency_ms": 600.89,
+          "ok": false,
+          "fields": {
+            "phonetic": false,
+            "meanings": false
+          },
+          "error": null
+        },
+        {
+          "host": "en.wiktionary.org",
+          "status_code": 200,
+          "latency_ms": 428.84,
+          "ok": true,
+          "fields": {
+            "phonetic": false,
+            "meanings": true
+          },
+          "error": null
+        }
+      ],
+      "fields": {
+        "phonetic": false,
+        "meanings": true
+      },
+      "audio_url": null,
+      "audio_probe": null,
+      "action_audio_probe": {
+        "status_code": 200,
+        "latency_ms": 321.21,
+        "audio_markers": 0,
+        "candidate_audio_url": null,
+        "candidate_probe": null,
+        "error": null
+      },
+      "fallback_triggered": false,
+      "fallback": null
+    },
+    {
+      "word": "こんにちは",
+      "source_lang": "ja",
+      "provider": "wiktionary-rest:en.wiktionary.org",
+      "lookup": {
+        "status_code": 404,
+        "latency_ms": 50.26,
+        "ok": false,
+        "error": null
+      },
+      "lookup_attempts": [
+        {
+          "host": "ja.wiktionary.org",
+          "status_code": 501,
+          "latency_ms": 687.89,
+          "ok": false,
+          "fields": {
+            "phonetic": false,
+            "meanings": false
+          },
+          "error": null
+        },
+        {
+          "host": "en.wiktionary.org",
+          "status_code": 404,
+          "latency_ms": 50.26,
+          "ok": false,
+          "fields": {
+            "phonetic": false,
+            "meanings": false
+          },
+          "error": null
+        }
+      ],
+      "fields": {
+        "meanings": false
+      },
+      "audio_url": null,
+      "audio_probe": null,
+      "action_audio_probe": {
+        "status_code": 200,
+        "latency_ms": 372.08,
+        "audio_markers": 0,
+        "candidate_audio_url": null,
+        "candidate_probe": null,
+        "error": null
+      },
+      "fallback_triggered": true,
+      "fallback": {
+        "status_code": 200,
+        "latency_ms": 1807.29,
+        "translated_text": "Hi",
+        "ok": true,
+        "error": null
+      }
+    },
+    {
+      "word": "안녕하세요",
+      "source_lang": "ko",
+      "provider": "wiktionary-rest:en.wiktionary.org",
+      "lookup": {
+        "status_code": 200,
+        "latency_ms": 51.57,
+        "ok": true,
+        "error": null
+      },
+      "lookup_attempts": [
+        {
+          "host": "ko.wiktionary.org",
+          "status_code": 501,
+          "latency_ms": 649.41,
+          "ok": false,
+          "fields": {
+            "phonetic": false,
+            "meanings": false
+          },
+          "error": null
+        },
+        {
+          "host": "en.wiktionary.org",
+          "status_code": 200,
+          "latency_ms": 51.57,
+          "ok": true,
+          "fields": {
+            "phonetic": false,
+            "meanings": true
+          },
+          "error": null
+        }
+      ],
+      "fields": {
+        "meanings": true
+      },
+      "audio_url": null,
+      "audio_probe": null,
+      "action_audio_probe": {
+        "status_code": 200,
+        "latency_ms": 348.72,
+        "audio_markers": 0,
+        "candidate_audio_url": null,
+        "candidate_probe": null,
+        "error": null
+      },
+      "fallback_triggered": false,
+      "fallback": null
+    },
+    {
+      "word": "привет",
+      "source_lang": "ru",
+      "provider": "wiktionary-rest:en.wiktionary.org",
+      "lookup": {
+        "status_code": 200,
+        "latency_ms": 133.08,
+        "ok": true,
+        "error": null
+      },
+      "lookup_attempts": [
+        {
+          "host": "ru.wiktionary.org",
+          "status_code": 501,
+          "latency_ms": 637.7,
+          "ok": false,
+          "fields": {
+            "phonetic": false,
+            "meanings": false
+          },
+          "error": null
+        },
+        {
+          "host": "en.wiktionary.org",
+          "status_code": 200,
+          "latency_ms": 133.08,
+          "ok": true,
+          "fields": {
+            "phonetic": false,
+            "meanings": true
+          },
+          "error": null
+        }
+      ],
+      "fields": {
+        "meanings": true
+      },
+      "audio_url": null,
+      "audio_probe": null,
+      "action_audio_probe": {
+        "status_code": 200,
+        "latency_ms": 347.32,
+        "audio_markers": 0,
+        "candidate_audio_url": null,
+        "candidate_probe": null,
+        "error": null
+      },
+      "fallback_triggered": false,
+      "fallback": null
+    },
+    {
+      "word": "你好",
+      "source_lang": "zh-CN",
+      "provider": "wiktionary-rest:en.wiktionary.org",
+      "lookup": {
+        "status_code": 200,
+        "latency_ms": 51.79,
+        "ok": true,
+        "error": null
+      },
+      "lookup_attempts": [
+        {
+          "host": "zh.wiktionary.org",
+          "status_code": 501,
+          "latency_ms": 663.79,
+          "ok": false,
+          "fields": {
+            "phonetic": false,
+            "meanings": false
+          },
+          "error": null
+        },
+        {
+          "host": "en.wiktionary.org",
+          "status_code": 200,
+          "latency_ms": 51.79,
+          "ok": true,
+          "fields": {
+            "phonetic": false,
+            "meanings": true
+          },
+          "error": null
+        }
+      ],
+      "fields": {
+        "meanings": true
+      },
+      "audio_url": null,
+      "audio_probe": null,
+      "action_audio_probe": {
+        "status_code": 200,
+        "latency_ms": 347.09,
+        "audio_markers": 0,
+        "candidate_audio_url": null,
+        "candidate_probe": null,
+        "error": null
+      },
+      "fallback_triggered": false,
+      "fallback": null
+    },
+    {
+      "word": "hallo",
+      "source_lang": "de",
+      "provider": "wiktionary-rest:en.wiktionary.org",
+      "lookup": {
+        "status_code": 200,
+        "latency_ms": 55.38,
+        "ok": true,
+        "error": null
+      },
+      "lookup_attempts": [
+        {
+          "host": "de.wiktionary.org",
+          "status_code": 501,
+          "latency_ms": 619.04,
+          "ok": false,
+          "fields": {
+            "phonetic": false,
+            "meanings": false
+          },
+          "error": null
+        },
+        {
+          "host": "en.wiktionary.org",
+          "status_code": 200,
+          "latency_ms": 55.38,
+          "ok": true,
+          "fields": {
+            "phonetic": false,
+            "meanings": true
+          },
+          "error": null
+        }
+      ],
+      "fields": {
+        "meanings": true
+      },
+      "audio_url": null,
+      "audio_probe": null,
+      "action_audio_probe": {
+        "status_code": 200,
+        "latency_ms": 338.21,
+        "audio_markers": 1,
+        "candidate_audio_url": "https://commons.wikimedia.org/wiki/Special:FilePath/CPIDL%20German%20-%20Hallo.ogg",
+        "candidate_probe": {
+          "ok": true,
+          "status_code": 206,
+          "latency_ms": 1446.92,
+          "content_type": "application/ogg",
+          "final_url": "https://upload.wikimedia.org/wikipedia/commons/0/0d/CPIDL_German_-_Hallo.ogg",
+          "error": null
+        },
+        "error": null
+      },
+      "fallback_triggered": false,
+      "fallback": null
+    },
+    {
+      "word": "bonjour",
+      "source_lang": "fr",
+      "provider": "wiktionary-rest:en.wiktionary.org",
+      "lookup": {
+        "status_code": 200,
+        "latency_ms": 57.01,
+        "ok": true,
+        "error": null
+      },
+      "lookup_attempts": [
+        {
+          "host": "fr.wiktionary.org",
+          "status_code": 501,
+          "latency_ms": 594.78,
+          "ok": false,
+          "fields": {
+            "phonetic": false,
+            "meanings": false
+          },
+          "error": null
+        },
+        {
+          "host": "en.wiktionary.org",
+          "status_code": 200,
+          "latency_ms": 57.01,
+          "ok": true,
+          "fields": {
+            "phonetic": false,
+            "meanings": true
+          },
+          "error": null
+        }
+      ],
+      "fields": {
+        "meanings": true
+      },
+      "audio_url": null,
+      "audio_probe": null,
+      "action_audio_probe": {
+        "status_code": 200,
+        "latency_ms": 637.6,
+        "audio_markers": 0,
+        "candidate_audio_url": null,
+        "candidate_probe": null,
+        "error": null
+      },
+      "fallback_triggered": false,
+      "fallback": null
+    },
+    {
+      "word": "hei",
+      "source_lang": "fi",
+      "provider": "wiktionary-rest:en.wiktionary.org",
+      "lookup": {
+        "status_code": 200,
+        "latency_ms": 744.66,
+        "ok": true,
+        "error": null
+      },
+      "lookup_attempts": [
+        {
+          "host": "fi.wiktionary.org",
+          "status_code": 501,
+          "latency_ms": 713.6,
+          "ok": false,
+          "fields": {
+            "phonetic": false,
+            "meanings": false
+          },
+          "error": null
+        },
+        {
+          "host": "en.wiktionary.org",
+          "status_code": 200,
+          "latency_ms": 744.66,
+          "ok": true,
+          "fields": {
+            "phonetic": false,
+            "meanings": true
+          },
+          "error": null
+        }
+      ],
+      "fields": {
+        "meanings": true
+      },
+      "audio_url": null,
+      "audio_probe": null,
+      "action_audio_probe": {
+        "status_code": 200,
+        "latency_ms": 328.87,
+        "audio_markers": 1,
+        "candidate_audio_url": "https://commons.wikimedia.org/wiki/Special:FilePath/1",
+        "candidate_probe": {
+          "ok": false,
+          "status_code": 404,
+          "latency_ms": 813.71,
+          "content_type": "text/html; charset=UTF-8",
+          "final_url": "https://commons.wikimedia.org/wiki/Special:Redirect/file/1",
+          "error": null
+        },
+        "error": null
+      },
+      "fallback_triggered": false,
+      "fallback": null
+    }
+  ]
+}

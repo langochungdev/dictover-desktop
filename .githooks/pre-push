@@ -1,0 +1,30 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+PYTHON_BIN="${PYTHON_BIN:-python}"
+
+cd "$ROOT_DIR"
+
+echo "=== Pre-push checks ==="
+
+echo "[1/3] Unit tests"
+cargo test --manifest-path src-tauri/Cargo.toml --quiet
+if [[ -d "sidecar/tests" ]]; then
+  "$PYTHON_BIN" -m pytest sidecar/tests/ -q --tb=short
+fi
+
+echo "[2/3] Lint"
+npm run lint --silent
+
+echo "[3/3] Changelog refresh"
+CHANGELOG_CONTENT="$(bash scripts/changelog.sh || true)"
+if [[ -n "$CHANGELOG_CONTENT" ]]; then
+  DATE_VALUE="$(date +%Y-%m-%d)"
+  { printf '## [%s]\n\n' "$DATE_VALUE"; printf '%s\n\n' "$CHANGELOG_CONTENT"; cat CHANGELOG.md 2>/dev/null || true; } > CHANGELOG.md.tmp
+  mv CHANGELOG.md.tmp CHANGELOG.md
+  git add CHANGELOG.md
+  echo "CHANGELOG.md updated and staged."
+fi
+
+echo "=== Pre-push OK ==="
