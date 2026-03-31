@@ -21,8 +21,10 @@ interface ScreenBounds {
 }
 
 const BASE_WIDTH = 420;
-const BASE_HEIGHT = 72;
+const BASE_HEIGHT = 120;
 const MIN_POPOVER_WIDTH = 420;
+const MIN_LOOKUP_HEIGHT = 148;
+const MIN_TRANSLATE_HEIGHT = 108;
 const SUBPANEL_DETAIL_WIDTH = 440;
 const SUBPANEL_IMAGE_WIDTH = 520;
 const SUBPANEL_DETAIL_HEIGHT = 300;
@@ -33,6 +35,8 @@ const GAP = 8;
 const WINDOW_PADDING_X = 0;
 const WINDOW_PADDING_Y = 32;
 const SETTLE_FRAMES = 6;
+const NO_SUBPANEL_SETTLE_FRAMES = 4;
+const POST_SHOW_REMEASURE_MS = [90, 180, 320, 480] as const;
 
 function hasTauriBridge(): boolean {
   return typeof window !== "undefined" && "__TAURI_INTERNALS__" in window;
@@ -240,14 +244,31 @@ export function usePopoverResize(
         const measuredWidth = preferredWidth
           ? preferredWidth
           : Math.max(popover.offsetWidth, measuredRect.width);
-        const measuredHeight = Math.max(popover.offsetHeight, measuredRect.height);
+        const measuredHeight = Math.max(
+          popover.scrollHeight,
+          popover.offsetHeight,
+          measuredRect.height,
+        );
+        const maxWindowHeight = Math.max(
+          BASE_HEIGHT,
+          Math.floor(getScreenBounds().bottom - getWindowOffset().y - BASE_INSET_Y),
+        );
         const targetWidth = Math.max(
           MIN_POPOVER_WIDTH,
           Math.ceil(measuredWidth + BASE_INSET_X * 2),
         );
+        const minWindowHeight =
+          popoverState === "lookup"
+            ? MIN_LOOKUP_HEIGHT
+            : popoverState === "translate"
+              ? MIN_TRANSLATE_HEIGHT
+              : BASE_HEIGHT;
         const targetHeight = Math.max(
-          1,
-          Math.ceil(measuredHeight + BASE_INSET_Y * 2),
+          minWindowHeight,
+          Math.min(
+            Math.ceil(measuredHeight + BASE_INSET_Y * 2 + WINDOW_PADDING_Y),
+            maxWindowHeight,
+          ),
         );
         const sizeChanged =
           targetWidth !== lastWindowSizeRef.current.width ||
@@ -430,9 +451,48 @@ export function usePopoverResize(
       }
     };
 
+    const scheduleLayout = () => {
+      cancelAnimationFrame(rafRef.current);
+      rafRef.current = requestAnimationFrame(() => {
+        runLayout();
+      });
+    };
+
+    const timers: number[] = [];
+    for (const delay of POST_SHOW_REMEASURE_MS) {
+      timers.push(
+        window.setTimeout(() => {
+          scheduleLayout();
+        }, delay),
+      );
+    }
+
+    const observedPopover = popoverRef.current;
+    const resizeObserver =
+      typeof ResizeObserver !== "undefined" && observedPopover
+        ? new ResizeObserver(() => {
+            scheduleLayout();
+          })
+        : null;
+    resizeObserver?.observe(observedPopover as Element);
+
     runLayout();
     if (!hasSubPanel) {
+      let frame = 0;
+      const settleNoPanel = () => {
+        rafRef.current = requestAnimationFrame(() => {
+          runLayout();
+          frame += 1;
+          if (frame < NO_SUBPANEL_SETTLE_FRAMES) {
+            settleNoPanel();
+          }
+        });
+      };
+
+      settleNoPanel();
       return () => {
+        timers.forEach((id) => window.clearTimeout(id));
+        resizeObserver?.disconnect();
         cancelAnimationFrame(rafRef.current);
       };
     }
@@ -450,6 +510,8 @@ export function usePopoverResize(
     settle();
 
     return () => {
+      timers.forEach((id) => window.clearTimeout(id));
+      resizeObserver?.disconnect();
       cancelAnimationFrame(rafRef.current);
     };
   }, [

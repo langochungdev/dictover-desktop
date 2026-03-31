@@ -44,7 +44,7 @@ const DOUBLE_CLICK_MAX_INTERVAL_MS: u64 = 360;
 const POINT_ANCHOR_HALF_WIDTH: i32 = 16;
 const POINT_ANCHOR_HALF_HEIGHT: i32 = 14;
 const POPOVER_BASE_WIDTH: f64 = 420.0;
-const POPOVER_BASE_HEIGHT: f64 = 72.0;
+const POPOVER_BASE_HEIGHT: f64 = 120.0;
 const CURSOR_GAP: i32 = 14;
 
 fn auto_selection_state() -> &'static Mutex<AutoSelectionState> {
