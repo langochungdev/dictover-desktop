@@ -20,8 +20,8 @@ interface ScreenBounds {
   bottom: number;
 }
 
-const BASE_WIDTH = 360;
-const BASE_HEIGHT = 180;
+const BASE_WIDTH = 320;
+const BASE_HEIGHT = 72;
 const MIN_POPOVER_WIDTH = 320;
 const SUBPANEL_DETAIL_WIDTH = 440;
 const SUBPANEL_IMAGE_WIDTH = 520;

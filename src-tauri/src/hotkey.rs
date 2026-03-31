@@ -14,6 +14,7 @@ const DEFAULT_TRANSLATE_SHORTCUT: &str = "Shift";
 const HOTKEY_CAPTURE_SETTLE_MS: u64 = 90;
 const HOTKEY_RETRY_DELAY_MS: u64 = 120;
 const HOTKEY_LOADING_MIN_MS: u64 = 170;
+const HOTKEY_CAPTURE_MAX_ATTEMPTS: u8 = 4;
 
 #[derive(Debug, Clone, Serialize)]
 pub struct HotkeyTranslationEvent {
@@ -258,26 +259,28 @@ pub async fn handle_modifier_shortcut(app: AppHandle) -> Result<(), String> {
 }
 
 async fn capture_active_document_text_stable() -> Result<String, String> {
-    let first = tauri::async_runtime::spawn_blocking(|| {
-        std::thread::sleep(Duration::from_millis(HOTKEY_CAPTURE_SETTLE_MS));
-        automation::capture_active_document_text()
-    })
-    .await
-    .map_err(|err| format!("capture active document task failed: {err}"))??;
+    for attempt in 0..HOTKEY_CAPTURE_MAX_ATTEMPTS {
+        let wait_ms = HOTKEY_CAPTURE_SETTLE_MS + HOTKEY_RETRY_DELAY_MS * u64::from(attempt);
+        let captured = tauri::async_runtime::spawn_blocking(move || {
+            std::thread::sleep(Duration::from_millis(wait_ms));
+            automation::capture_active_document_text()
+        })
+        .await
+        .map_err(|err| format!("capture active document task failed: {err}"))??;
 
-    if !first.replace('\r', "").trim().is_empty() {
-        return Ok(first);
+        if !captured.replace('\r', "").trim().is_empty() {
+            return Ok(captured);
+        }
     }
 
-    tauri::async_runtime::spawn_blocking(|| {
+    let fallback = tauri::async_runtime::spawn_blocking(|| {
         std::thread::sleep(Duration::from_millis(HOTKEY_RETRY_DELAY_MS));
+        automation::capture_selection_text()
     })
     .await
-    .map_err(|err| format!("capture retry delay task failed: {err}"))?;
+    .map_err(|err| format!("capture selection fallback task failed: {err}"))??;
 
-    tauri::async_runtime::spawn_blocking(automation::capture_active_document_text)
-        .await
-        .map_err(|err| format!("capture active document retry task failed: {err}"))?
+    Ok(fallback)
 }
 
 async fn replace_active_document_text_stable(replacement: String) -> Result<(), String> {
@@ -325,7 +328,6 @@ async fn on_translate_replace_triggered(
         .ok()
         .flatten();
 
-    let _ = indicator::show_hotkey_indicator(&app, cursor);
     let started_at = Instant::now();
 
     let result = async {
@@ -343,7 +345,9 @@ async fn on_translate_replace_triggered(
             target: config.quick_translate_target_language.clone(),
         };
 
+        let _ = indicator::show_hotkey_indicator(&app, cursor);
         let response = bridge::translate_via_sidecar(&state.client, payload).await?;
+        let _ = indicator::hide_hotkey_indicator(&app);
         let translated = sanitize_translation_text(&response.result);
         if translated.trim().is_empty() {
             return Ok(());
