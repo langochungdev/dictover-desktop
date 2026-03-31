@@ -293,61 +293,6 @@ button {
     line-height: 1.45;
 }
 
-.apl-body--loading-only {
-    min-height: 20px;
-    width: fit-content;
-    padding: 4px 8px;
-}
-
-.apl-loading {
-    min-height: 18px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    width: 100%;
-}
-
-.apl-loading-dots {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    gap: 5px;
-    height: 12px;
-}
-
-.apl-loading-dots span {
-    width: 5px;
-    height: 5px;
-    border-radius: 999px;
-    background: #4d5b79;
-    opacity: 0.35;
-    transform: translateY(0);
-    animation: apl-loading-dot-wave 1.05s infinite ease-in-out;
-}
-
-.apl-loading-dots span:nth-child(2) {
-    animation-delay: 0.2s;
-}
-
-.apl-loading-dots span:nth-child(3) {
-    animation-delay: 0.4s;
-}
-
-@keyframes apl-loading-dot-wave {
-
-    0%,
-    55%,
-    100% {
-        opacity: 0.35;
-        transform: translateY(0);
-    }
-
-    25% {
-        opacity: 1;
-        transform: translateY(-4px);
-    }
-}
-
 .apl-lookup-compact,
 .apl-translate-compact {
     text-align: left;

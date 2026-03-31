@@ -5,6 +5,7 @@ use tauri::{AppHandle, Emitter, LogicalSize, Manager, PhysicalPosition, Position
 
 use crate::config::{self, AppConfig};
 use crate::hotkey;
+use crate::indicator;
 use crate::selection;
 
 pub struct AppState {
@@ -197,6 +198,16 @@ pub async fn emit_selection_changed(
 #[tauri::command]
 pub fn hide_popover(app: AppHandle) -> Result<(), String> {
     selection::hide_popover_window(&app)
+}
+
+#[tauri::command]
+pub fn show_loading_indicator(app: AppHandle) -> Result<(), String> {
+    indicator::show_hotkey_indicator(&app, None)
+}
+
+#[tauri::command]
+pub fn hide_loading_indicator(app: AppHandle) -> Result<(), String> {
+    indicator::hide_hotkey_indicator(&app)
 }
 
 #[tauri::command]

@@ -46,6 +46,8 @@ fn main() {
             bridge::search_images,
             bridge::emit_selection_changed,
             bridge::hide_popover,
+            bridge::show_loading_indicator,
+            bridge::hide_loading_indicator,
             bridge::take_pending_selection,
             bridge::show_settings_window,
             bridge::show_debug_window,

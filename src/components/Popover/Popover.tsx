@@ -8,7 +8,7 @@ import type { AutoPlayAudioMode, PopoverOpenPanelMode } from '@/types/settings'
 import type { DictionaryResult } from '@/services/dictionary'
 import type { TranslateResult } from '@/services/translate'
 import { normalizeText, sanitizeMarkup, lookupPrimary, resolveImageQuery, buildAlternativeAudioUrl } from '@/components/Popover/popover.utils'
-import { LoadingDots, AudioIcon, ImageIcon, SettingsIcon } from '@/components/Popover/PopoverIcons'
+import { AudioIcon, ImageIcon, SettingsIcon } from '@/components/Popover/PopoverIcons'
 import { SubPanel } from '@/components/Popover/SubPanel'
 import { usePopoverResize } from '@/hooks/usePopoverResize'
 import type { SelectionAnchor } from '@/types/selectionAnchor'
@@ -203,21 +203,18 @@ export function Popover({ state, selection, dictionary, translation, error, pane
     selectionAnchor,
   )
 
-  if (state === 'idle') return null
+  if (state === 'idle' || state === 'loading') return null
 
   const lookupData = dictionary ? { word: normalizeText(sanitizeMarkup(dictionary.word || selectedText)), phonetic: normalizeText(sanitizeMarkup(dictionary.phonetic || '')), ...lookupPrimary(dictionary) } : null
   const definitionText = lookupData?.firstDefinition || ''
   const translationLines = translation ? sanitizeMarkup(translation.result).split(/\r?\n+/).map(l => normalizeText(l)).filter(Boolean) : []
   const portalTarget = typeof document !== 'undefined' ? document.body : null
-
   if (!portalTarget) return null
 
   return (
     <>
       {createPortal(
         <section ref={popoverRef} className="apl-popover" data-testid="popover" role="dialog" aria-modal="true" aria-label="Dictover popover">
-          {state === 'loading' && <div className="apl-body apl-body--loading-only"><LoadingDots label="Loading" /></div>}
-
           {state === 'lookup' && dictionary && lookupData && (
             <div className="apl-body apl-lookup-compact">
               <div className="apl-lookup-headerline">
@@ -279,7 +276,6 @@ export function Popover({ state, selection, dictionary, translation, error, pane
         panelMode="images"
       >
         <div className="apl-subpanel-body apl-image-grid">
-          {imageLoading && <LoadingDots label="Loading images" />}
           {!imageLoading && imageItems.length > 0 && imageItems.map((item, i) => (
             <a key={`${item.src}-${i}`} className="apl-image-card" href={item.page_url || item.src} target="_blank" rel="noopener noreferrer">
               <img src={item.src} alt={item.title || `${imageQuery} ${i + 1}`} loading={i < 4 ? 'eager' : 'lazy'} />

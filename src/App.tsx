@@ -478,6 +478,21 @@ function PopoverWindow() {
   }, [data.dictionary, data.selectedText, data.translation, error, state])
 
   useEffect(() => {
+    if (state === 'loading') {
+      void invoke('show_loading_indicator').catch(() => undefined)
+      return
+    }
+
+    void invoke('hide_loading_indicator').catch(() => undefined)
+  }, [state])
+
+  useEffect(() => {
+    return () => {
+      void invoke('hide_loading_indicator').catch(() => undefined)
+    }
+  }, [])
+
+  useEffect(() => {
     const onKeydown = (event: KeyboardEvent) => {
       if (event.key === 'Escape') {
         closePopover('escape')

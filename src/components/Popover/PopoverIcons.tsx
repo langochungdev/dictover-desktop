@@ -1,16 +1,4 @@
 // Các icon SVG dùng trong Popover
-export function LoadingDots({ label }: { label: string }) {
-  return (
-    <div className="apl-loading" role="status" aria-live="polite" aria-label={label}>
-      <span className="apl-loading-dots" aria-hidden="true">
-        <span />
-        <span />
-        <span />
-      </span>
-    </div>
-  )
-}
-
 export function AudioIcon() {
   return (
     <svg className="apl-audio-icon" viewBox="0 0 21 21" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false">
