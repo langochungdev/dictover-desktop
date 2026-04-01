@@ -1,0 +1,46 @@
+    Checking dictover_desktop v0.1.0 (D:\store\dictover-desktop\src-tauri)
+error[E0432]: unresolved import `tauri::tray`
+   --> src\main.rs:14:12
+    |
+ 14 | use tauri::tray::{MouseButton, TrayIconBuilder, TrayIconEvent};
+    |            ^^^^ could not find `tray` in `tauri`
+    |
+note: found an item that was configured out
+   --> C:\Users\lango\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\tauri-2.10.3\src\lib.rs:113:9
+    |
+111 | #[cfg(all(desktop, feature = "tray-icon"))]
+    |                    --------------------- the item is gated behind the `tray-icon` feature
+112 | #[cfg_attr(docsrs, doc(cfg(all(desktop, feature = "tray-icon"))))]
+113 | pub mod tray;
+    |         ^^^^
+
+error[E0282]: type annotations needed
+  --> src\main.rs:50:33
+   |
+50 |                 .on_menu_event(|app, event| match event.id.as_ref() {
+   |                                 ^^^
+51 |                     "quit" => app.exit(0),
+   |                               --- type must be known at this point
+   |
+help: consider giving this closure parameter an explicit type
+   |
+50 |                 .on_menu_event(|app: /* Type */, event| match event.id.as_ref() {
+   |                                    ++++++++++++
+
+error[E0282]: type annotations needed
+  --> src\main.rs:57:38
+   |
+57 |                 .on_tray_icon_event(|tray, event| {
+   |                                      ^^^^
+58 |                     if let TrayIconEvent::Click { button: MouseButton::Left, .. } = event {
+59 |                         let _ = bridge::show_settings_window(tray.app_handle().clone());
+   |                                                              ---- type must be known at this point
+   |
+help: consider giving this closure parameter an explicit type
+   |
+57 |                 .on_tray_icon_event(|tray: /* Type */, event| {
+   |                                          ++++++++++++
+
+Some errors have detailed explanations: E0282, E0432.
+For more information about an error, try `rustc --explain E0282`.
+error: could not compile `dictover_desktop` (bin "dictover_desktop") due to 3 previous errors

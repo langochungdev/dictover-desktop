@@ -10,6 +10,8 @@ mod selection;
 use reqwest::Client;
 use tauri::Manager;
 use tauri_plugin_global_shortcut::{Builder as GlobalShortcutBuilder, ShortcutState};
+use tauri::menu::{Menu, MenuItem};
+use tauri::tray::{MouseButton, TrayIconBuilder, TrayIconEvent};
 
 fn main() {
     tauri::Builder::default()
@@ -36,7 +38,29 @@ fn main() {
             app.manage(state);
             hotkey::register_hotkeys(&app_handle, &loaded)?;
             selection::install_popover_window_guards(&app_handle);
-            selection::start_selection_listener(app_handle);
+            selection::start_selection_listener(app_handle.clone());
+            
+            let quit_i = MenuItem::with_id(&app_handle, "quit", "Quit", true, None::<&str>)?;
+            let settings_i = MenuItem::with_id(&app_handle, "settings", "Settings", true, None::<&str>)?;
+            let menu = Menu::with_items(&app_handle, &[&settings_i, &quit_i])?;
+
+            let _tray = TrayIconBuilder::new()
+                .icon(app_handle.default_window_icon().unwrap().clone())
+                .menu(&menu)
+                .on_menu_event(|app, event| match event.id.as_ref() {
+                    "quit" => app.exit(0),
+                    "settings" => {
+                        let _ = bridge::show_settings_window(app.clone());
+                    }
+                    _ => {}
+                })
+                .on_tray_icon_event(|tray, event| {
+                    if let TrayIconEvent::Click { button: MouseButton::Left, .. } = event {
+                        let _ = bridge::show_settings_window(tray.app_handle().clone());
+                    }
+                })
+                .build(&app_handle)?;
+                
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
@@ -51,6 +75,7 @@ fn main() {
             bridge::hide_loading_indicator,
             bridge::take_pending_selection,
             bridge::show_settings_window,
+            bridge::hide_settings_window,
             bridge::show_debug_window,
             bridge::copy_text_to_clipboard,
             bridge::resize_popover

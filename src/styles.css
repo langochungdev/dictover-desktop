@@ -20,6 +20,13 @@ body {
     background: var(--bg-main);
 }
 
+body.apl-settings-body {
+    background: transparent;
+    overflow: hidden;
+    padding: 16px;
+    box-sizing: border-box;
+}
+
 body.apl-popover-body {
     min-height: auto;
     background: transparent;
@@ -48,11 +55,17 @@ body.apl-preview-body {
 }
 
 .apl-settings-shell {
-    max-width: 980px;
-    margin: 0 auto;
+    width: 100%;
+    height: 100%;
+    box-sizing: border-box;
     padding: 1rem;
     display: grid;
     gap: 1rem;
+    align-content: start;
+    background: var(--bg-main);
+    border-radius: 16px;
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2), 0 0 0 1px rgba(0, 0, 0, 0.05);
+    overflow-y: auto;
 }
 
 .apl-preview-shell {

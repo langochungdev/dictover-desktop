@@ -16,7 +16,12 @@
         "title": "DictOver Settings",
         "width": 920,
         "height": 760,
-        "resizable": true
+        "resizable": false,
+        "decorations": false,
+        "skipTaskbar": true,
+        "transparent": true,
+        "center": true,
+        "visibleOnAllWorkspaces": false
       },
       {
         "label": "popover",

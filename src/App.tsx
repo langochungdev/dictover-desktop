@@ -224,6 +224,40 @@ function SettingsWindow() {
     }
   }, [])
 
+  useEffect(() => {
+    const hasTauriBridge = typeof window !== 'undefined' && '__TAURI_INTERNALS__' in window
+    
+    const onKeydown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        void invoke('hide_settings_window').catch(() => undefined)
+      }
+    }
+    
+    const onWindowBlur = () => {
+      void invoke('hide_settings_window').catch(() => undefined)
+    }
+
+    let cleanupTauriFocus: (() => void) | null = null
+    if (hasTauriBridge) {
+      void getCurrentWindow().onFocusChanged(({ payload: focused }) => {
+        if (!focused) {
+          void invoke('hide_settings_window').catch(() => undefined)
+        }
+      }).then((unlisten) => {
+        cleanupTauriFocus = unlisten
+      }).catch(() => undefined)
+    }
+
+    window.addEventListener('keydown', onKeydown)
+    window.addEventListener('blur', onWindowBlur)
+    
+    return () => {
+      window.removeEventListener('keydown', onKeydown)
+      window.removeEventListener('blur', onWindowBlur)
+      cleanupTauriFocus?.()
+    }
+  }, [])
+
   const handleSettingsChange = useCallback((next: AppSettings) => {
     const previous = settingsRef.current
     const changedKeys = changedSettingKeys(previous, next)
@@ -302,6 +336,7 @@ function SettingsWindow() {
         open
         settings={settings}
         onChange={handleSettingsChange}
+        onClose={() => invoke('hide_settings_window').catch(() => undefined)}
       />
     </main>
   )
@@ -843,11 +878,14 @@ function PreviewWindow() {
 
 export function App() {
   useEffect(() => {
+    const isSettings = !IS_POPOVER_WINDOW && !IS_HOTKEY_INDICATOR_WINDOW && !IS_DEBUG_LOG_WINDOW && !IS_PREVIEW_WINDOW
+    document.body.classList.toggle('apl-settings-body', isSettings)
     document.body.classList.toggle('apl-popover-body', IS_POPOVER_WINDOW)
     document.body.classList.toggle('apl-hotkey-indicator-body', IS_HOTKEY_INDICATOR_WINDOW)
     document.body.classList.toggle('apl-debug-body', IS_DEBUG_LOG_WINDOW)
     document.body.classList.toggle('apl-preview-body', IS_PREVIEW_WINDOW)
     return () => {
+      document.body.classList.remove('apl-settings-body')
       document.body.classList.remove('apl-popover-body')
       document.body.classList.remove('apl-hotkey-indicator-body')
       document.body.classList.remove('apl-debug-body')
