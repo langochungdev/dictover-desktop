@@ -242,6 +242,15 @@ pub fn show_debug_window(app: AppHandle) -> Result<(), String> {
 }
 
 #[tauri::command]
+pub fn copy_text_to_clipboard(text: String) -> Result<(), String> {
+    let mut clipboard =
+        arboard::Clipboard::new().map_err(|err| format!("open clipboard failed: {err}"))?;
+    clipboard
+        .set_text(text)
+        .map_err(|err| format!("write clipboard failed: {err}"))
+}
+
+#[tauri::command]
 #[allow(non_snake_case)]
 pub fn resize_popover(
     app: AppHandle,

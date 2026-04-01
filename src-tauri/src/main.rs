@@ -51,6 +51,7 @@ fn main() {
             bridge::take_pending_selection,
             bridge::show_settings_window,
             bridge::show_debug_window,
+            bridge::copy_text_to_clipboard,
             bridge::resize_popover
         ])
         .run(tauri::generate_context!())

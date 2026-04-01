@@ -1,3 +1,5 @@
+import { invoke } from "@tauri-apps/api/core";
+
 export interface DebugLogEntry {
   id: string;
   at: string;
@@ -140,4 +142,29 @@ export function formatDebugLogs(entries: DebugLogEntry[]): string {
       return `[${timestamp}] [${entry.scope}] ${entry.message}${suffix}`;
     })
     .join("\n");
+}
+
+export async function copyDebugLogsToClipboard(): Promise<boolean> {
+  const text = formatDebugLogs(readDebugLogs());
+  if (!text.trim()) {
+    return false;
+  }
+
+  if (typeof navigator !== "undefined" && navigator.clipboard?.writeText) {
+    try {
+      await navigator.clipboard.writeText(text);
+      return true;
+    } catch {}
+  }
+
+  if (typeof window === "undefined" || !("__TAURI_INTERNALS__" in window)) {
+    return false;
+  }
+
+  try {
+    await invoke("copy_text_to_clipboard", { text });
+    return true;
+  } catch {
+    return false;
+  }
 }

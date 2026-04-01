@@ -299,25 +299,37 @@ button {
     text-align: left;
 }
 
+.apl-lookup-compact {
+    display: grid;
+    gap: 8px;
+}
+
 .apl-lookup-headerline {
     display: flex;
-    align-items: flex-start;
-    justify-content: space-between;
-    gap: 6px;
+    align-items: center;
+    justify-content: flex-start;
+    gap: 4px;
+    flex-wrap: nowrap;
 }
 
 .apl-lookup-headertext {
     display: flex;
     align-items: center;
-    gap: 6px;
-    flex: 1 1 auto;
+    gap: 4px;
+    overflow: hidden;
     min-width: 0;
-    flex-wrap: wrap;
+    flex: 0 1 auto;
+    flex-wrap: nowrap;
 }
 
 .apl-lookup-summary {
+    flex: 0 1 auto;
+    max-width: min(34ch, 52vw);
+    min-width: 0;
     color: #24324a;
-    overflow-wrap: anywhere;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
     font-size: 1rem;
     font-weight: 600;
     margin: 0;
@@ -339,8 +351,9 @@ button {
 .apl-inline-actions {
     display: inline-flex;
     align-items: center;
-    gap: 3px;
-    margin-left: auto;
+    gap: 2px;
+    margin-left: 0;
+    flex: 0 0 auto;
 }
 
 .apl-popover .apl-button {
@@ -381,7 +394,7 @@ button {
 
 .apl-lookup-definition-toggle {
     all: unset;
-    margin-top: 8px;
+    margin-top: 0;
     display: block;
     position: relative;
     width: 100%;
@@ -573,7 +586,9 @@ button {
 
 .apl-lookup-summary {
     color: #24324a;
-    overflow-wrap: anywhere;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
 }
 
 .apl-translation {

@@ -31,7 +31,7 @@ const WIDTH_SYNC_FRAMES = 4
 const MIN_POPOVER_WIDTH = 220
 const MAX_POPOVER_WIDTH = 560
 const CONTENT_CHAR_WIDTH_PX = 7
-const POPOVER_BASE_CONTENT_PADDING_PX = 120
+const POPOVER_BASE_CONTENT_PADDING_PX = 84
 
 function useAudioPlayer(dictionary: DictionaryResult | null, selectedText: string) {
   const [audioPlaying, setAudioPlaying] = useState(false)

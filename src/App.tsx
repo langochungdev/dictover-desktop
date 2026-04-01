@@ -7,7 +7,7 @@ import { SettingsPanel } from '@/components/Settings/SettingsPanel'
 import { getSettingsCopy } from '@/constants/settingsI18n'
 import { usePopover, type PopoverState } from '@/hooks/usePopover'
 import { loadSettings, saveSettings } from '@/services/config'
-import { appendDebugLog } from '@/services/debugLog'
+import { appendDebugLog, clearDebugLogs, copyDebugLogsToClipboard } from '@/services/debugLog'
 import type { DictionaryResult } from '@/services/dictionary'
 import type { TranslateResult } from '@/services/translate'
 import type { SelectionAnchor } from '@/types/selectionAnchor'
@@ -309,9 +309,51 @@ function SettingsWindow() {
 function PopoverWindow() {
   const [settings, setSettings] = useState<AppSettings>(DEFAULT_SETTINGS)
   const [selectionAnchor, setSelectionAnchor] = useState<SelectionAnchor | null>(null)
+  const stateRef = useRef<PopoverState>('idle')
+  const anchorRef = useRef<SelectionAnchor | null>(null)
   const lastLoggedStateRef = useRef<string>('idle')
   const lastSelectionEventRef = useRef<{ key: string; at: number; eventId: number | null }>({ key: '', at: 0, eventId: null })
+  const lastHotkeyEventRef = useRef({ copyAt: 0, clearAt: 0 })
   const { state, data, error, close, openFromSelection } = usePopover(settings)
+  const hasTauriBridge = typeof window !== 'undefined' && '__TAURI_INTERNALS__' in window
+
+  useEffect(() => {
+    stateRef.current = state
+    anchorRef.current = selectionAnchor
+  }, [selectionAnchor, state])
+
+  const exportTraceLogs = useCallback((source: 'local-f8' | 'global-f8') => {
+    const now = Date.now()
+    if (now - lastHotkeyEventRef.current.copyAt < 900) {
+      return
+    }
+    lastHotkeyEventRef.current.copyAt = now
+    appendDebugLog(
+      'trace',
+      'F8 trace export requested',
+      `${source} | ${stateRef.current} | ${anchorSummary(anchorRef.current)}`,
+    )
+    void (async () => {
+      const copied = await copyDebugLogsToClipboard()
+      appendDebugLog(
+        'trace',
+        copied ? 'F8 trace export copied' : 'F8 trace export failed',
+        source,
+      )
+    })()
+  }, [])
+
+  const clearTraceLogs = useCallback((source: 'local-f7' | 'global-f7') => {
+    const now = Date.now()
+    if (now - lastHotkeyEventRef.current.clearAt < 250) {
+      return
+    }
+    lastHotkeyEventRef.current.clearAt = now
+    clearDebugLogs()
+    if (source === 'local-f7') {
+      appendDebugLog('trace', 'F7 trace logs cleared', source)
+    }
+  }, [])
 
   const processSelectionEvent = useCallback(async (payload: SelectionEventPayload, source: 'pending' | 'event') => {
     const text = payload.text.trim()
@@ -496,13 +538,60 @@ function PopoverWindow() {
     const onKeydown = (event: KeyboardEvent) => {
       if (event.key === 'Escape') {
         closePopover('escape')
+        return
+      }
+
+      if (hasTauriBridge) {
+        return
+      }
+
+      if (event.key === 'F7') {
+        event.preventDefault()
+        clearTraceLogs('local-f7')
+        return
+      }
+
+      if (event.key === 'F8') {
+        event.preventDefault()
+        exportTraceLogs('local-f8')
       }
     }
     window.addEventListener('keydown', onKeydown)
     return () => {
       window.removeEventListener('keydown', onKeydown)
     }
-  }, [closePopover])
+  }, [clearTraceLogs, closePopover, exportTraceLogs, hasTauriBridge])
+
+  useEffect(() => {
+    let cleanupDebugCopy: (() => void) | null = null
+    let cleanupDebugClear: (() => void) | null = null
+
+    const setupDebugHotkeys = async () => {
+      try {
+        const unlistenDebugCopy = await listen('debug-copy-hotkey', () => {
+          exportTraceLogs('global-f8')
+        })
+        cleanupDebugCopy = unlistenDebugCopy
+      } catch {
+        cleanupDebugCopy = null
+      }
+
+      try {
+        const unlistenDebugClear = await listen('debug-clear-hotkey', () => {
+          clearTraceLogs('global-f7')
+        })
+        cleanupDebugClear = unlistenDebugClear
+      } catch {
+        cleanupDebugClear = null
+      }
+    }
+
+    void setupDebugHotkeys()
+    return () => {
+      cleanupDebugCopy?.()
+      cleanupDebugClear?.()
+    }
+  }, [])
 
   useEffect(() => {
     const onPointerDown = (event: PointerEvent) => {

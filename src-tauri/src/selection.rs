@@ -45,9 +45,9 @@ const POINT_ANCHOR_HALF_WIDTH: i32 = 16;
 const POINT_ANCHOR_HALF_HEIGHT: i32 = 14;
 const POPOVER_BASE_WIDTH: f64 = 420.0;
 const POPOVER_BASE_HEIGHT: f64 = 72.0;
-const CURSOR_GAP: i32 = 14;
-const CURSOR_ABOVE_EXTRA_GAP_MAX: i32 = 18;
-const CURSOR_ABOVE_NEAR_BOTTOM_RATIO: f32 = 0.42;
+const CURSOR_GAP: i32 = 10;
+const CURSOR_ABOVE_EXTRA_GAP_MAX: i32 = 6;
+const CURSOR_ABOVE_NEAR_BOTTOM_RATIO: f32 = 0.22;
 
 fn auto_selection_state() -> &'static Mutex<AutoSelectionState> {
     AUTO_SELECTION_STATE.get_or_init(|| {
@@ -248,6 +248,18 @@ fn on_modifier_hotkey_event(app: &AppHandle, event_type: &rdev::EventType) {
     }
 }
 
+fn on_debug_copy_hotkey_event(app: &AppHandle, event_type: &rdev::EventType) {
+    match event_type {
+        rdev::EventType::KeyPress(rdev::Key::F8) => {
+            let _ = app.emit("debug-copy-hotkey", "f8");
+        }
+        rdev::EventType::KeyPress(rdev::Key::F7) => {
+            let _ = app.emit("debug-clear-hotkey", "f7");
+        }
+        _ => {}
+    }
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ScreenPoint {
     pub x: i32,
@@ -328,6 +340,7 @@ pub fn start_selection_listener(app: AppHandle) {
         let app_for_listener = app.clone();
         let callback = move |event: rdev::Event| {
             on_modifier_hotkey_event(&app_for_listener, &event.event_type);
+            on_debug_copy_hotkey_event(&app_for_listener, &event.event_type);
 
             if should_trigger_auto_selection(&event) {
                 let app_for_task = app_for_listener.clone();
@@ -558,7 +571,8 @@ fn center_distance_to_point(
 
 fn compute_cursor_above_gap(cursor_y: i32, monitor_top: i32, monitor_bottom: i32) -> i32 {
     let monitor_height = (monitor_bottom - monitor_top).max(1);
-    let near_bottom_zone = ((monitor_height as f32) * CURSOR_ABOVE_NEAR_BOTTOM_RATIO).round() as i32;
+    let near_bottom_zone =
+        ((monitor_height as f32) * CURSOR_ABOVE_NEAR_BOTTOM_RATIO).round() as i32;
     let distance_to_bottom = (monitor_bottom - cursor_y).max(0);
 
     if distance_to_bottom >= near_bottom_zone || near_bottom_zone <= 0 {
@@ -674,8 +688,14 @@ fn resolve_popover_position(
 
     let candidates = [
         (cursor_x + cursor_gap_below, cursor_y + cursor_gap_below),
-        (cursor_x + cursor_gap_below, cursor_y - height - cursor_gap_above),
-        (cursor_x - width - cursor_gap_below, cursor_y + cursor_gap_below),
+        (
+            cursor_x + cursor_gap_below,
+            cursor_y - height - cursor_gap_above,
+        ),
+        (
+            cursor_x - width - cursor_gap_below,
+            cursor_y + cursor_gap_below,
+        ),
         (
             cursor_x - width - cursor_gap_below,
             cursor_y - height - cursor_gap_above,
@@ -712,9 +732,17 @@ fn resolve_popover_position(
     }
 
     // Keep a clear cursor gap even if scoring picks a candidate too close.
-    let cursor_hit_gap = cursor_gap_above.max(cursor_gap_below);
-    let cursor_hits_x = cursor_x >= best_left - cursor_hit_gap && cursor_x <= best_left + width + cursor_hit_gap;
-    let cursor_hits_y = cursor_y >= best_top - cursor_hit_gap && cursor_y <= best_top + height + cursor_hit_gap;
+    let cursor_hit_gap = if best_top + height <= cursor_y {
+        cursor_gap_above
+    } else if best_top >= cursor_y {
+        cursor_gap_below
+    } else {
+        cursor_gap_above.max(cursor_gap_below)
+    };
+    let cursor_hits_x =
+        cursor_x >= best_left - cursor_hit_gap && cursor_x <= best_left + width + cursor_hit_gap;
+    let cursor_hits_y =
+        cursor_y >= best_top - cursor_hit_gap && cursor_y <= best_top + height + cursor_hit_gap;
     if cursor_hits_x && cursor_hits_y {
         let preferred_above = cursor_y - height - cursor_gap_above;
         let preferred_below = cursor_y + cursor_gap_below;

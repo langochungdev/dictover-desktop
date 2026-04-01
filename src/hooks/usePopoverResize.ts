@@ -1,6 +1,7 @@
 import { useEffect, useRef } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import type { SelectionAnchor } from "@/types/selectionAnchor";
+import { appendDebugLog } from "@/services/debugLog";
 
 type ScreenWithOffsets = Screen & { availLeft?: number; availTop?: number };
 type WindowWithOffsets = Window & { screenLeft?: number; screenTop?: number };
@@ -18,6 +19,19 @@ interface ScreenBounds {
   top: number;
   right: number;
   bottom: number;
+}
+
+type PopoverAnchorSide = "left" | "right" | "unknown";
+type PopoverAnchorVertical = "above" | "below" | "unknown";
+
+interface PopoverAnchorPlacement {
+  horizontal: PopoverAnchorSide;
+  vertical: PopoverAnchorVertical;
+  anchorX: number | null;
+  anchorY: number | null;
+  normalizedByScale: number;
+  horizontalDiff: number;
+  verticalDiff: number;
 }
 
 const BASE_WIDTH = 420;
@@ -38,6 +52,8 @@ const NO_SUBPANEL_SETTLE_FRAMES = 4;
 const POST_SHOW_REMEASURE_MS = [90, 180, 320, 480] as const;
 const VIEWPORT_OVERFLOW_GUARD_PX = 6;
 const MIN_DYNAMIC_WINDOW_GUARD_PX = 2;
+const MAX_DYNAMIC_EDGE_INSET_PX = 28;
+let lastNoSubpanelTrace = { signature: "", at: 0 };
 
 function hasTauriBridge(): boolean {
   return typeof window !== "undefined" && "__TAURI_INTERNALS__" in window;
@@ -170,7 +186,10 @@ function readBoxShadowInsets(boxShadow: string): {
   return { left, right, top, bottom };
 }
 
-function getPopoverWindowInsets(popover: HTMLElement): {
+function getPopoverWindowInsets(
+  popover: HTMLElement,
+  placement: PopoverAnchorPlacement,
+): {
   left: number;
   right: number;
   top: number;
@@ -186,13 +205,154 @@ function getPopoverWindowInsets(popover: HTMLElement): {
     MIN_DYNAMIC_WINDOW_GUARD_PX,
     Math.ceil((popover.offsetHeight || BASE_HEIGHT) * 0.015),
   );
+  const dynamicHorizontalInset = Math.max(
+    BASE_INSET_X,
+    Math.ceil(Math.max(shadowInsets.left, shadowInsets.right)) + adaptiveX,
+  );
+  const dynamicVerticalInset = Math.max(
+    BASE_INSET_Y,
+    Math.ceil(Math.max(shadowInsets.top, shadowInsets.bottom)) + adaptiveY,
+  );
+
+  const leftInset =
+    placement.horizontal === "left" ? dynamicHorizontalInset : BASE_INSET_X;
+  const rightInset =
+    placement.horizontal === "right" ? dynamicHorizontalInset : BASE_INSET_X;
+  const topInset =
+    placement.vertical === "above" ? dynamicVerticalInset : BASE_INSET_Y;
+  const bottomInset =
+    placement.vertical === "below" ? dynamicVerticalInset : BASE_INSET_Y;
 
   return {
-    left: Math.max(BASE_INSET_X, Math.ceil(shadowInsets.left) + adaptiveX),
-    right: Math.max(BASE_INSET_X, Math.ceil(shadowInsets.right) + adaptiveX),
-    top: Math.max(BASE_INSET_Y, Math.ceil(shadowInsets.top) + adaptiveY),
-    bottom: Math.max(BASE_INSET_Y, Math.ceil(shadowInsets.bottom) + adaptiveY),
+    left: Math.min(MAX_DYNAMIC_EDGE_INSET_PX, leftInset),
+    right: Math.min(MAX_DYNAMIC_EDGE_INSET_PX, rightInset),
+    top: Math.min(MAX_DYNAMIC_EDGE_INSET_PX, topInset),
+    bottom: Math.min(MAX_DYNAMIC_EDGE_INSET_PX, bottomInset),
   };
+}
+
+function resolveAnchorCenter(anchor: SelectionAnchor | null): {
+  x: number;
+  y: number;
+} | null {
+  if (!anchor) {
+    return null;
+  }
+  if (anchor.point) {
+    return { x: anchor.point.x, y: anchor.point.y };
+  }
+  if (anchor.rect) {
+    const left = Math.min(anchor.rect.left, anchor.rect.right);
+    const top = Math.min(anchor.rect.top, anchor.rect.bottom);
+    const right = Math.max(anchor.rect.left, anchor.rect.right);
+    const bottom = Math.max(anchor.rect.top, anchor.rect.bottom);
+    return {
+      x: Math.round((left + right) / 2),
+      y: Math.round((top + bottom) / 2),
+    };
+  }
+  return null;
+}
+
+function resolvePopoverPlacement(
+  anchor: SelectionAnchor | null,
+  windowOffset: { x: number; y: number },
+): PopoverAnchorPlacement {
+  const center = resolveAnchorCenter(anchor);
+  if (!center) {
+    return {
+      horizontal: "unknown",
+      vertical: "unknown",
+      anchorX: null,
+      anchorY: null,
+      normalizedByScale: 1,
+      horizontalDiff: 0,
+      verticalDiff: 0,
+    };
+  }
+
+  const viewportWidth = Math.max(1, window.innerWidth);
+  const viewportHeight = Math.max(1, window.innerHeight);
+  const deviceScale =
+    Number.isFinite(window.devicePixelRatio) && window.devicePixelRatio > 0
+      ? window.devicePixelRatio
+      : 1;
+
+  const candidateScales = [1];
+  if (Math.abs(deviceScale - 1) > 0.01) {
+    candidateScales.push(deviceScale);
+  }
+
+  let bestCandidate: {
+    x: number;
+    y: number;
+    scale: number;
+    overflow: number;
+  } | null = null;
+  for (const scale of candidateScales) {
+    const viewportX = center.x / scale - windowOffset.x;
+    const viewportY = center.y / scale - windowOffset.y;
+    const overflow =
+      Math.max(0, -viewportX) +
+      Math.max(0, viewportX - viewportWidth) +
+      Math.max(0, -viewportY) +
+      Math.max(0, viewportY - viewportHeight);
+
+    if (!bestCandidate || overflow < bestCandidate.overflow) {
+      bestCandidate = {
+        x: viewportX,
+        y: viewportY,
+        scale,
+        overflow,
+      };
+    }
+  }
+
+  const resolvedX = bestCandidate ? bestCandidate.x : center.x - windowOffset.x;
+  const resolvedY = bestCandidate ? bestCandidate.y : center.y - windowOffset.y;
+  const normalizedByScale = bestCandidate ? bestCandidate.scale : 1;
+
+  const distToLeft = Math.abs(resolvedX);
+  const distToRight = Math.abs(viewportWidth - resolvedX);
+  const distToTop = Math.abs(resolvedY);
+  const distToBottom = Math.abs(viewportHeight - resolvedY);
+
+  const horizontalDiff = Math.abs(distToLeft - distToRight);
+  const verticalDiff = Math.abs(distToTop - distToBottom);
+  const tieThreshold = 6;
+
+  const horizontal: PopoverAnchorSide =
+    horizontalDiff <= tieThreshold
+      ? "unknown"
+      : distToRight < distToLeft
+        ? "left"
+        : "right";
+  const vertical: PopoverAnchorVertical =
+    verticalDiff <= tieThreshold
+      ? "unknown"
+      : distToBottom < distToTop
+        ? "above"
+        : "below";
+
+  return {
+    horizontal,
+    vertical,
+    anchorX: Math.round(resolvedX),
+    anchorY: Math.round(resolvedY),
+    normalizedByScale,
+    horizontalDiff,
+    verticalDiff,
+  };
+}
+
+function distanceToRectAxis(value: number, start: number, end: number): number {
+  if (value < start) {
+    return Math.round(start - value);
+  }
+  if (value > end) {
+    return Math.round(value - end);
+  }
+  return 0;
 }
 
 function getAnchorKey(anchor: SelectionAnchor | null): string {
@@ -289,6 +449,7 @@ export function usePopoverResize(
     if (anchorKey !== lastAnchorKeyRef.current) {
       insetRef.current = { x: BASE_INSET_X, y: BASE_INSET_Y };
       resizedRef.current = false;
+      lastWindowSizeRef.current = { width: BASE_WIDTH, height: BASE_HEIGHT };
       stableScreenPopoverRef.current = null;
       previewWindowOffsetRef.current = { x: 0, y: 0 };
       lastAnchorKeyRef.current = anchorKey;
@@ -311,17 +472,8 @@ export function usePopoverResize(
           return;
         }
 
-        const preferredWidth =
-          stablePopoverWidth && stablePopoverWidth > 0
-            ? stablePopoverWidth
-            : null;
-        if (preferredWidth) {
-          popover.style.width = `${preferredWidth}px`;
-          popover.style.maxWidth = `${preferredWidth}px`;
-        } else {
-          popover.style.removeProperty("width");
-          popover.style.removeProperty("max-width");
-        }
+        popover.style.removeProperty("width");
+        popover.style.removeProperty("max-width");
         popover.dataset.subpanelSide = "right";
         delete popover.dataset.subpanelLeft;
         delete popover.dataset.subpanelTop;
@@ -335,16 +487,19 @@ export function usePopoverResize(
           previewWindow.style.removeProperty("transform");
         }
 
-        const popoverInsets = getPopoverWindowInsets(popover);
+        const currentWindowOffset = getWindowOffset();
+        const placement = resolvePopoverPlacement(
+          selectionAnchor,
+          currentWindowOffset,
+        );
+        const popoverInsets = getPopoverWindowInsets(popover, placement);
         insetX = popoverInsets.left;
         insetY = popoverInsets.top;
         popover.style.left = `${insetX}px`;
         popover.style.top = `${insetY}px`;
 
         const measuredRect = popover.getBoundingClientRect();
-        const measuredWidth = preferredWidth
-          ? preferredWidth
-          : Math.max(popover.offsetWidth, measuredRect.width);
+        const measuredWidth = Math.max(popover.offsetWidth, measuredRect.width);
         const measuredHeight = Math.max(
           popover.scrollHeight,
           popover.offsetHeight,
@@ -360,7 +515,14 @@ export function usePopoverResize(
               popoverInsets.bottom,
           ),
         );
-        const minAllowedWidth = Math.max(minPopoverWidth, Math.ceil(measuredWidth));
+        const adaptiveMinWidth = Math.min(
+          minPopoverWidth,
+          Math.ceil(measuredWidth + 32),
+        );
+        const minAllowedWidth = Math.max(
+          Math.ceil(measuredWidth),
+          adaptiveMinWidth,
+        );
         const measuredTargetWidth = Math.ceil(
           measuredWidth + popoverInsets.left + popoverInsets.right,
         );
@@ -415,6 +577,112 @@ export function usePopoverResize(
                 targetHeight + viewportOverflowY + VIEWPORT_OVERFLOW_GUARD_PX,
               )
             : targetHeight;
+        const viewportMismatch =
+          Math.abs(window.innerWidth - safeTargetWidth) > 2 ||
+          Math.abs(window.innerHeight - safeTargetHeight) > 2;
+        const contentBox = {
+          left: insetX,
+          top: insetY,
+          right: insetX + Math.ceil(measuredWidth),
+          bottom: insetY + Math.ceil(measuredHeight),
+        };
+        const anchorToContentGap =
+          placement.anchorX === null || placement.anchorY === null
+            ? null
+            : {
+                x: distanceToRectAxis(
+                  placement.anchorX,
+                  contentBox.left,
+                  contentBox.right,
+                ),
+                y: distanceToRectAxis(
+                  placement.anchorY,
+                  contentBox.top,
+                  contentBox.bottom,
+                ),
+              };
+        const lookupHeader = popover.querySelector(".apl-lookup-headerline");
+        const lookupDefinition = popover.querySelector(
+          ".apl-lookup-definition-toggle",
+        );
+        const lookupHeaderText = popover.querySelector(
+          ".apl-lookup-headertext",
+        );
+        const lookupActions = popover.querySelector(".apl-inline-actions");
+        const lookupLayout =
+          lookupHeader instanceof HTMLElement
+            ? {
+                headerHeight: Math.round(
+                  lookupHeader.getBoundingClientRect().height,
+                ),
+                headerTextHeight:
+                  lookupHeaderText instanceof HTMLElement
+                    ? Math.round(
+                        lookupHeaderText.getBoundingClientRect().height,
+                      )
+                    : null,
+                actionsHeight:
+                  lookupActions instanceof HTMLElement
+                    ? Math.round(lookupActions.getBoundingClientRect().height)
+                    : null,
+                definitionTopGap:
+                  lookupDefinition instanceof HTMLElement
+                    ? Math.round(
+                        lookupDefinition.getBoundingClientRect().top -
+                          lookupHeader.getBoundingClientRect().bottom,
+                      )
+                    : null,
+              }
+            : null;
+        const tracePayload = {
+          placement,
+          windowOffset: currentWindowOffset,
+          windowViewport: {
+            width: window.innerWidth,
+            height: window.innerHeight,
+          },
+          insets: popoverInsets,
+          contentBox,
+          anchorToContentGap,
+          measured: {
+            width: Math.ceil(measuredWidth),
+            height: Math.ceil(measuredHeight),
+          },
+          widthPolicy: {
+            minPopoverWidth,
+            adaptiveMinWidth,
+            measuredTargetWidth,
+            overflowTargetWidth,
+            hasHorizontalOverflow,
+          },
+          lookupLayout,
+          target: {
+            width: safeTargetWidth,
+            height: safeTargetHeight,
+          },
+          viewportOverflow: {
+            x: viewportOverflowX,
+            y: viewportOverflowY,
+          },
+          viewportMismatch,
+          anchor: selectionAnchor,
+        };
+        const traceSignature = JSON.stringify(tracePayload);
+        const now = Date.now();
+        if (
+          traceSignature !== lastNoSubpanelTrace.signature ||
+          now - lastNoSubpanelTrace.at >= 900
+        ) {
+          appendDebugLog(
+            "trace",
+            "Popover no-subpanel snapshot",
+            traceSignature,
+          );
+          lastNoSubpanelTrace = {
+            signature: traceSignature,
+            at: now,
+          };
+        }
         const sizeChanged =
           safeTargetWidth !== lastWindowSizeRef.current.width ||
           safeTargetHeight !== lastWindowSizeRef.current.height;
@@ -423,6 +691,7 @@ export function usePopoverResize(
         if (
           resizedRef.current ||
           sizeChanged ||
+          viewportMismatch ||
           Math.abs(shiftX) > 0.5 ||
           Math.abs(shiftY) > 0.5
         ) {
