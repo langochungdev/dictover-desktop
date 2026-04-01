@@ -452,8 +452,17 @@ function PopoverWindow() {
     }
   }, [])
 
+  const closePopover = useCallback((reason?: string) => {
+    close()
+    if (reason) {
+      appendDebugLog('popover', 'Close popover', reason)
+    }
+    void invoke('hide_popover')
+  }, [close])
+
   useEffect(() => {
     let cleanupSelection: (() => void) | null = null
+    let cleanupForceClose: (() => void) | null = null
     const setupEvents = async () => {
       try {
         const unlistenSelection = await listen<SelectionEventPayload>('selection-changed', (event) => {
@@ -464,21 +473,26 @@ function PopoverWindow() {
         cleanupSelection = null
       }
 
+      try {
+        const unlistenForceClose = await listen<string>('force-close-popover', (event) => {
+          const reason = typeof event.payload === 'string' && event.payload.trim()
+            ? event.payload
+            : 'native-force-close'
+          closePopover(reason)
+        })
+        cleanupForceClose = unlistenForceClose
+      } catch {
+        cleanupForceClose = null
+      }
+
       await consumePendingSelection()
     }
     void setupEvents()
     return () => {
       cleanupSelection?.()
+      cleanupForceClose?.()
     }
-  }, [consumePendingSelection, processSelectionEvent])
-
-  const closePopover = useCallback((reason?: string) => {
-    close()
-    if (reason) {
-      appendDebugLog('popover', 'Close popover', reason)
-    }
-    void invoke('hide_popover')
-  }, [close])
+  }, [closePopover, consumePendingSelection, processSelectionEvent])
 
   useEffect(() => {
     if (state === lastLoggedStateRef.current) {
@@ -619,6 +633,31 @@ function PopoverWindow() {
     }
   }, [closePopover])
 
+  useEffect(() => {
+    const closeIfVisibleModel = (reason: string) => {
+      if (stateRef.current !== 'idle') {
+        closePopover(reason)
+      }
+    }
+
+    const onVisibilityChange = () => {
+      if (document.visibilityState === 'hidden') {
+        closeIfVisibleModel('desktop-switch-hidden')
+      }
+    }
+
+    const onPageHide = () => {
+      closeIfVisibleModel('desktop-switch-pagehide')
+    }
+
+    document.addEventListener('visibilitychange', onVisibilityChange)
+    window.addEventListener('pagehide', onPageHide)
+    return () => {
+      document.removeEventListener('visibilitychange', onVisibilityChange)
+      window.removeEventListener('pagehide', onPageHide)
+    }
+  }, [closePopover])
+
   const openSettingsWindow = useCallback(() => {
     appendDebugLog('popover', 'Open settings window')
     void invoke('show_settings_window')
@@ -637,6 +676,7 @@ function PopoverWindow() {
         autoPlayAudioMode={settings.auto_play_audio_mode}
         selectionAnchor={selectionAnchor}
         onOpenSettings={openSettingsWindow}
+        onRequestClose={closePopover}
       />
     </main>
   )

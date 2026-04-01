@@ -1,8 +1,15 @@
 use serde::{Deserialize, Serialize};
-use std::sync::atomic::{AtomicU64, Ordering};
+use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use std::sync::{Mutex, OnceLock};
 use std::time::{Duration, Instant};
-use tauri::{AppHandle, Emitter, LogicalSize, Manager, PhysicalPosition, Position};
+use tauri::{AppHandle, Emitter, LogicalSize, Manager, PhysicalPosition, Position, WindowEvent};
+
+#[cfg(target_os = "windows")]
+use windows::Win32::UI::Accessibility::{SetWinEventHook, UnhookWinEvent, HWINEVENTHOOK};
+#[cfg(target_os = "windows")]
+use windows::Win32::UI::WindowsAndMessaging::{
+    GetMessageW, EVENT_SYSTEM_DESKTOPSWITCH, MSG, WINEVENT_OUTOFCONTEXT,
+};
 
 use crate::automation;
 use crate::bridge::AppState;
@@ -31,11 +38,22 @@ struct MouseSelectionState {
     last_release_y: f64,
 }
 
+struct NavigationHotkeyState {
+    alt_pressed: bool,
+    ctrl_pressed: bool,
+    meta_pressed: bool,
+}
+
 static AUTO_SELECTION_STATE: OnceLock<Mutex<AutoSelectionState>> = OnceLock::new();
 static PENDING_SELECTION_EVENT: OnceLock<Mutex<Option<SelectionEvent>>> = OnceLock::new();
 static MODIFIER_HOTKEY_STATE: OnceLock<Mutex<ModifierHotkeyState>> = OnceLock::new();
 static MOUSE_SELECTION_STATE: OnceLock<Mutex<MouseSelectionState>> = OnceLock::new();
+static NAVIGATION_HOTKEY_STATE: OnceLock<Mutex<NavigationHotkeyState>> = OnceLock::new();
 static SELECTION_EVENT_SEQ: OnceLock<AtomicU64> = OnceLock::new();
+#[cfg(target_os = "windows")]
+static DESKTOP_SWITCH_APP: OnceLock<AppHandle> = OnceLock::new();
+#[cfg(target_os = "windows")]
+static DESKTOP_SWITCH_HOOK_STARTED: AtomicBool = AtomicBool::new(false);
 
 const SHIFT_TRIGGER_MAX_HOLD_MS: u64 = 700;
 const MOUSE_DRAG_MIN_DISTANCE_PX: f64 = 6.0;
@@ -84,6 +102,16 @@ fn mouse_selection_state() -> &'static Mutex<MouseSelectionState> {
             last_release_at: None,
             last_release_x: 0.0,
             last_release_y: 0.0,
+        })
+    })
+}
+
+fn navigation_hotkey_state() -> &'static Mutex<NavigationHotkeyState> {
+    NAVIGATION_HOTKEY_STATE.get_or_init(|| {
+        Mutex::new(NavigationHotkeyState {
+            alt_pressed: false,
+            ctrl_pressed: false,
+            meta_pressed: false,
         })
     })
 }
@@ -260,6 +288,73 @@ fn on_debug_copy_hotkey_event(app: &AppHandle, event_type: &rdev::EventType) {
     }
 }
 
+fn is_alt_key(key: rdev::Key) -> bool {
+    matches!(key, rdev::Key::Alt | rdev::Key::AltGr)
+}
+
+fn is_ctrl_key(key: rdev::Key) -> bool {
+    matches!(key, rdev::Key::ControlLeft | rdev::Key::ControlRight)
+}
+
+fn is_meta_key(key: rdev::Key) -> bool {
+    matches!(key, rdev::Key::MetaLeft | rdev::Key::MetaRight)
+}
+
+fn is_horizontal_arrow(key: rdev::Key) -> bool {
+    matches!(key, rdev::Key::LeftArrow | rdev::Key::RightArrow)
+}
+
+fn on_navigation_hotkey_event(app: &AppHandle, event_type: &rdev::EventType) {
+    let mut should_hide_popover = false;
+
+    match event_type {
+        rdev::EventType::KeyPress(key) => {
+            let Ok(mut guard) = navigation_hotkey_state().lock() else {
+                return;
+            };
+
+            if is_alt_key(*key) {
+                guard.alt_pressed = true;
+            }
+            if is_ctrl_key(*key) {
+                guard.ctrl_pressed = true;
+            }
+            if is_meta_key(*key) {
+                guard.meta_pressed = true;
+                should_hide_popover = true;
+            }
+
+            if *key == rdev::Key::Tab && guard.alt_pressed {
+                should_hide_popover = true;
+            }
+
+            if is_horizontal_arrow(*key) && guard.ctrl_pressed && guard.meta_pressed {
+                should_hide_popover = true;
+            }
+        }
+        rdev::EventType::KeyRelease(key) => {
+            let Ok(mut guard) = navigation_hotkey_state().lock() else {
+                return;
+            };
+
+            if is_alt_key(*key) {
+                guard.alt_pressed = false;
+            }
+            if is_ctrl_key(*key) {
+                guard.ctrl_pressed = false;
+            }
+            if is_meta_key(*key) {
+                guard.meta_pressed = false;
+            }
+        }
+        _ => {}
+    }
+
+    if should_hide_popover {
+        let _ = force_close_popover(app, "navigation-hotkey");
+    }
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ScreenPoint {
     pub x: i32,
@@ -341,6 +436,7 @@ pub fn start_selection_listener(app: AppHandle) {
         let callback = move |event: rdev::Event| {
             on_modifier_hotkey_event(&app_for_listener, &event.event_type);
             on_debug_copy_hotkey_event(&app_for_listener, &event.event_type);
+            on_navigation_hotkey_event(&app_for_listener, &event.event_type);
 
             if should_trigger_auto_selection(&event) {
                 let app_for_task = app_for_listener.clone();
@@ -353,6 +449,74 @@ pub fn start_selection_listener(app: AppHandle) {
         if let Err(err) = rdev::listen(callback) {
             eprintln!("selection listener error: {err:?}");
         }
+    });
+}
+
+pub fn install_popover_window_guards(app: &AppHandle) {
+    let Some(popover) = app.get_webview_window("popover") else {
+        return;
+    };
+
+    let app_handle = app.clone();
+    popover.on_window_event(move |event| {
+        let should_hide = matches!(event, WindowEvent::Focused(false));
+        if should_hide {
+            let _ = force_close_popover(&app_handle, "window-focused-false");
+        }
+    });
+
+    #[cfg(target_os = "windows")]
+    {
+        install_windows_desktop_switch_guard(app);
+    }
+}
+
+#[cfg(target_os = "windows")]
+unsafe extern "system" fn on_windows_desktop_switch(
+    _hook: HWINEVENTHOOK,
+    event: u32,
+    _hwnd: windows::Win32::Foundation::HWND,
+    _id_object: i32,
+    _id_child: i32,
+    _event_thread: u32,
+    _event_time: u32,
+) {
+    if event == EVENT_SYSTEM_DESKTOPSWITCH {
+        if let Some(app) = DESKTOP_SWITCH_APP.get() {
+            let _ = force_close_popover(app, "windows-desktop-switch");
+        }
+    }
+}
+
+#[cfg(target_os = "windows")]
+fn install_windows_desktop_switch_guard(app: &AppHandle) {
+    if DESKTOP_SWITCH_HOOK_STARTED.swap(true, Ordering::SeqCst) {
+        return;
+    }
+
+    let _ = DESKTOP_SWITCH_APP.set(app.clone());
+
+    std::thread::spawn(|| unsafe {
+        let hook = SetWinEventHook(
+            EVENT_SYSTEM_DESKTOPSWITCH,
+            EVENT_SYSTEM_DESKTOPSWITCH,
+            None,
+            Some(on_windows_desktop_switch),
+            0,
+            0,
+            WINEVENT_OUTOFCONTEXT,
+        );
+
+        if hook.0.is_null() {
+            DESKTOP_SWITCH_HOOK_STARTED.store(false, Ordering::SeqCst);
+            return;
+        }
+
+        let mut msg = MSG::default();
+        while GetMessageW(&mut msg, None, 0, 0).into() {}
+
+        let _ = UnhookWinEvent(hook);
+        DESKTOP_SWITCH_HOOK_STARTED.store(false, Ordering::SeqCst);
     });
 }
 
@@ -446,6 +610,11 @@ pub fn show_popover_window(
     let popover = app
         .get_webview_window("popover")
         .ok_or_else(|| "popover window not found".to_owned())?;
+
+    #[cfg(any(target_os = "windows", target_os = "macos"))]
+    {
+        let _ = popover.set_visible_on_all_workspaces(false);
+    }
 
     popover
         .set_size(LogicalSize::new(POPOVER_BASE_WIDTH, POPOVER_BASE_HEIGHT))
@@ -790,6 +959,11 @@ pub fn hide_popover_window(app: &AppHandle) -> Result<(), String> {
             .map_err(|err| format!("hide popover window failed: {err}"))?;
     }
     Ok(())
+}
+
+fn force_close_popover(app: &AppHandle, reason: &str) -> Result<(), String> {
+    let _ = app.emit("force-close-popover", reason.to_owned());
+    hide_popover_window(app)
 }
 
 pub fn emit_selection_changed(

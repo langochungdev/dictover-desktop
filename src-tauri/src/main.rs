@@ -35,6 +35,7 @@ fn main() {
             };
             app.manage(state);
             hotkey::register_hotkeys(&app_handle, &loaded)?;
+            selection::install_popover_window_guards(&app_handle);
             selection::start_selection_listener(app_handle);
             Ok(())
         })

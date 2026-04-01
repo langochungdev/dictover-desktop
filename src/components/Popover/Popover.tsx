@@ -23,6 +23,7 @@ interface PopoverProps {
   autoPlayAudioMode: AutoPlayAudioMode
   selectionAnchor: SelectionAnchor | null
   onOpenSettings?: () => void
+  onRequestClose?: (reason?: string) => void
 }
 
 const WIDTH_SYNC_FRAMES = 4
@@ -98,7 +99,7 @@ function useAudioPlayer(dictionary: DictionaryResult | null, selectedText: strin
   return { audioPlaying, audioError, playAudio, startAudio, stopAudio }
 }
 
-export function Popover({ state, selection, dictionary, translation, error, panelMode, enableAudio, autoPlayAudioMode, selectionAnchor, onOpenSettings }: PopoverProps) {
+export function Popover({ state, selection, dictionary, translation, error, panelMode, enableAudio, autoPlayAudioMode, selectionAnchor, onOpenSettings, onRequestClose }: PopoverProps) {
   const [activePanel, setActivePanel] = useState<PopoverOpenPanelMode>('none')
   const [lockedPopoverWidth, setLockedPopoverWidth] = useState<number | null>(null)
   const [baselinePopoverWidth, setBaselinePopoverWidth] = useState<number | null>(null)
@@ -206,6 +207,7 @@ export function Popover({ state, selection, dictionary, translation, error, pane
   const showDetailsPanel = state === 'lookup' && Boolean(dictionary) && activePanel === 'details'
   const showImagePanel = activePanel === 'images'
   const hasSubPanel = (showDetailsPanel && Boolean(dictionary)) || showImagePanel
+  const showBackdrop = state !== 'idle' && state !== 'loading'
 
   useEffect(() => {
     if (!hasSubPanel) {
@@ -345,13 +347,13 @@ export function Popover({ state, selection, dictionary, translation, error, pane
 
   return (
     <>
-      {hasSubPanel && createPortal(
+      {showBackdrop && createPortal(
         <div
           className="apl-subpanel-backdrop"
           aria-hidden="true"
           onPointerDown={(event) => {
             if (event.target === event.currentTarget) {
-              closeSubPanel()
+              onRequestClose?.('backdrop-pointerdown')
             }
           }}
         />,
