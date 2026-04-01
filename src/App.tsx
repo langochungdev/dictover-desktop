@@ -312,22 +312,12 @@ function SettingsWindow() {
     return copy.saveFailed
   }, [copy, status])
 
-  const openDebugWindow = useCallback(() => {
-    void invoke('show_debug_window')
-  }, [])
-
   return (
     <main className={`apl-settings-shell ${status === 'saving' ? 'is-saving' : ''}`}>
-      <header className="apl-settings-header-integrated">
-        <h1>{copy.title}</h1>
-        <div className="apl-settings-toolbar-clean">
-          <div className="apl-settings-status-bar">
-            <span className={`apl-settings-status-dot ${status === 'ready' || status === 'autoSaved' ? 'is-active' : ''}`} />
-            <span>{statusMessage}</span>
-          </div>
-          <button type="button" onClick={openDebugWindow}>Debug Logs</button>
-        </div>
-      </header>
+      <div className="apl-settings-status-bar apl-settings-status-bar--compact" aria-live="polite">
+        <span className={`apl-settings-status-dot ${status === 'ready' || status === 'autoSaved' ? 'is-active' : ''}`} />
+        <span>{statusMessage}</span>
+      </div>
 
       {loadingSettings && (
         <section className="apl-settings-boot" role="status" aria-live="polite">
@@ -341,7 +331,6 @@ function SettingsWindow() {
         open
         settings={settings}
         onChange={handleSettingsChange}
-        onClose={() => invoke('hide_settings_window').catch(() => undefined)}
       />
     </main>
   )

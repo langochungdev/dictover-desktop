@@ -15,7 +15,7 @@
         "label": "main",
         "title": "DictOver Settings",
         "width": 920,
-        "height": 760,
+        "height": 640,
         "resizable": false,
         "decorations": false,
         "skipTaskbar": true,

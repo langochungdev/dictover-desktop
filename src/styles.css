@@ -23,8 +23,12 @@ body {
 body.apl-settings-body {
     background: transparent;
     overflow: hidden;
-    padding: 16px;
+    padding: 0;
     box-sizing: border-box;
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
 }
 
 body.apl-popover-body {
@@ -55,18 +59,20 @@ body.apl-preview-body {
 }
 
 .apl-settings-shell {
-    width: 100%;
-    height: 100%;
+    width: min(920px, calc(100vw - 12px));
+    height: auto;
+    max-height: calc(100vh - 12px);
     box-sizing: border-box;
-    padding: 2.2rem;
+    padding: 0.9rem 1rem;
     display: flex;
     flex-direction: column;
-    gap: 1.5rem;
+    gap: 0.55rem;
+    justify-content: flex-start;
     align-content: start;
     background: var(--bg-main);
     border-radius: 20px;
     box-shadow: 0 10px 50px rgba(0, 0, 0, 0.22), 0 0 0 1px rgba(0, 0, 0, 0.04);
-    overflow-y: auto;
+    overflow: auto;
 }
 
 .apl-settings-header-integrated {
@@ -89,13 +95,18 @@ body.apl-preview-body {
     display: flex;
     align-items: center;
     gap: 0.5rem;
-    font-size: 0.85rem;
+    font-size: 0.78rem;
     color: #718096;
 }
 
+.apl-settings-status-bar--compact {
+    align-self: flex-end;
+    margin-right: 2px;
+}
+
 .apl-settings-status-dot {
-    width: 8px;
-    height: 8px;
+    width: 7px;
+    height: 7px;
     border-radius: 50%;
     background: #cbd5e0;
 }
@@ -780,16 +791,16 @@ button {
     max-height: calc(100vh - 40px);
     overflow: auto;
     z-index: 10030;
-    padding: 0.95rem;
+    padding: 0.7rem;
     display: grid;
-    gap: 0.9rem;
+    gap: 0.55rem;
     border: 1px solid #d7dde9;
     border-radius: 14px;
     background: #ffffff;
     box-shadow: 0 20px 48px rgba(18, 24, 38, 0.2);
     font-family: "Segoe UI", Tahoma, sans-serif;
-    font-size: 14px;
-    line-height: 1.45;
+    font-size: 13px;
+    line-height: 1.28;
 }
 
 .apl-settings-shell .apl-settings-root {
@@ -826,11 +837,11 @@ button {
 }
 
 .apl-settings-section {
-    margin-top: 14px;
+    margin-top: 8px;
     border-top: 1px solid #edf1f7;
-    padding-top: 12px;
+    padding-top: 7px;
     display: grid;
-    gap: 0.65rem;
+    gap: 0.45rem;
 }
 
 .apl-settings-section:first-of-type {
@@ -841,7 +852,7 @@ button {
 
 .apl-settings-section h3 {
     margin: 0;
-    font-size: 12px;
+    font-size: 11px;
     letter-spacing: 0.03em;
     text-transform: uppercase;
     color: #213250;
@@ -849,28 +860,28 @@ button {
 
 .apl-settings-grid {
     display: grid;
-    gap: 0.72rem;
-    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 0.45rem;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
 }
 
 .apl-settings-grid label {
     display: flex;
     flex-direction: column;
-    gap: 6px;
+    gap: 4px;
     color: #1f2f49;
-    font-size: 14px;
+    font-size: 13px;
 }
 
 .apl-settings-field {
     flex: 1;
     display: flex;
     flex-direction: column;
-    gap: 6px;
+    gap: 4px;
 }
 
 .apl-settings-field span {
     color: #1f2f49;
-    font-size: 12px;
+    font-size: 11px;
     font-weight: 600;
 }
 
@@ -878,30 +889,30 @@ button {
 .apl-settings-field input {
     border: 1px solid #c8d3ea;
     border-radius: 8px;
-    padding: 7px 10px;
+    padding: 6px 8px;
     color: #132548;
     background: #ffffff;
-    font-size: 14px;
+    font-size: 13px;
 }
 
 .apl-settings-language-row {
     display: flex;
     align-items: end;
-    gap: 8px;
+    gap: 6px;
 }
 
 .apl-settings-swap-languages {
     align-self: end;
     border-radius: 10px;
-    min-width: 44px;
-    padding: 7px 10px;
+    min-width: 38px;
+    padding: 6px 8px;
 }
 
 .apl-settings-radio {
     display: flex;
     align-items: center;
-    gap: 6px;
-    margin-bottom: 8px;
+    gap: 5px;
+    margin-bottom: 4px;
     color: #1f2f49;
 }
 
@@ -915,13 +926,13 @@ button {
     display: block;
     min-width: 0;
     text-align: left;
-    line-height: 1.35;
+    line-height: 1.2;
 }
 
 .apl-settings-radio-shortcut-row {
     display: flex;
     align-items: center;
-    gap: 10px;
+    gap: 6px;
 }
 
 .apl-settings-radio--inline {
@@ -930,7 +941,7 @@ button {
 }
 
 .apl-settings-shortcut-group {
-    margin-top: 8px;
+    margin-top: 4px;
 }
 
 .apl-settings-radio-shortcut-row .apl-settings-shortcut-group {
@@ -958,15 +969,15 @@ button {
 }
 
 .apl-settings-hint {
-    margin-top: 6px;
+    margin-top: 2px;
     color: #445878;
-    font-size: 12px;
+    font-size: 11px;
 }
 
 .apl-settings-section-title {
-    margin-bottom: 8px;
+    margin-bottom: 4px;
     color: #213250;
-    font-size: 12px;
+    font-size: 11px;
     font-weight: 700;
     text-transform: uppercase;
     letter-spacing: 0.03em;
@@ -977,7 +988,7 @@ button {
     display: grid;
     grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
     align-items: start;
-    gap: 8px 20px;
+    gap: 4px 12px;
 }
 
 .apl-settings-panel-definition-column {
@@ -985,7 +996,7 @@ button {
 }
 
 .apl-settings-panel-definition-column .apl-settings-radio {
-    margin-bottom: 8px;
+    margin-bottom: 4px;
 }
 
 .apl-settings-panel-definition-column--right {
@@ -1101,7 +1112,11 @@ button {
     }
 
     .apl-settings-shell {
-        padding: 1rem 0.75rem 5rem;
+        padding: 0.7rem;
+        width: 100vw;
+        height: 100vh;
+        border-radius: 0;
+        justify-content: flex-start;
     }
 
     .apl-popover {

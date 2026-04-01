@@ -13,7 +13,6 @@ interface SettingsPanelProps {
   open: boolean
   settings: AppSettings
   onChange: (next: AppSettings) => void
-  onClose?: () => void
 }
 
 function setField<K extends keyof AppSettings>(settings: AppSettings, key: K, value: AppSettings[K]): AppSettings {
@@ -92,7 +91,7 @@ function buildShortcutFromEvent(event: KeyboardEvent<HTMLInputElement>): string 
   return [...modifiers, key].join('+')
 }
 
-export function SettingsPanel({ open, settings, onChange, onClose }: SettingsPanelProps) {
+export function SettingsPanel({ open, settings, onChange }: SettingsPanelProps) {
   if (!open) {
     return null
   }
@@ -141,8 +140,7 @@ export function SettingsPanel({ open, settings, onChange, onClose }: SettingsPan
   }
 
   return (
-    <section className="apl-settings-root" role="dialog" aria-modal="true" aria-labelledby="apl-settings-title">
-      <h2 id="apl-settings-title">{copy.title}</h2>
+    <section className="apl-settings-root" role="dialog" aria-modal="true" aria-label={copy.title}>
 
       <div className="apl-settings-sections">
         <div className="apl-settings-section">
@@ -287,11 +285,6 @@ export function SettingsPanel({ open, settings, onChange, onClose }: SettingsPan
         </div>
       </div>
 
-      {onClose && (
-        <footer className="apl-settings-actions">
-          <button type="button" onClick={onClose}>{copy.close}</button>
-        </footer>
-      )}
     </section>
   )
 }
