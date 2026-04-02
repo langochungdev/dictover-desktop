@@ -1,8 +1,10 @@
 import { useEffect, useMemo, useState } from 'react'
 import { invoke } from '@tauri-apps/api/core'
+import { listen } from '@tauri-apps/api/event'
 import { appendDebugLog } from '@/services/debugLog'
 import { loadSettings } from '@/services/config'
 import type { OutputLanguageCode } from '@/constants/languages'
+import type { AppSettings } from '@/types/settings'
 
 const OCR_OVERLAY_HINTS: Record<OutputLanguageCode, string> = {
   vi: 'Kéo chuột để chọn vùng ảnh - Esc để hủy',
@@ -26,6 +28,15 @@ interface NormalizedRect {
   top: number
   width: number
   height: number
+}
+
+type SettingsUpdatedPayload = Partial<AppSettings>
+
+function resolveHintText(targetLanguage: OutputLanguageCode | undefined): string {
+  if (!targetLanguage) {
+    return OCR_OVERLAY_HINTS.en
+  }
+  return OCR_OVERLAY_HINTS[targetLanguage] ?? OCR_OVERLAY_HINTS.en
 }
 
 function normalizeRect(start: DragPoint, current: DragPoint): NormalizedRect {
@@ -57,11 +68,12 @@ export function OcrOverlayWindow() {
 
   useEffect(() => {
     let mounted = true
+    let cleanupSettingsUpdated: (() => void) | null = null
 
     void (async () => {
       try {
         const settings = await loadSettings()
-        const next = OCR_OVERLAY_HINTS[settings.target_language] ?? OCR_OVERLAY_HINTS.en
+        const next = resolveHintText(settings.target_language)
         if (mounted) {
           setHintText(next)
         }
@@ -72,8 +84,24 @@ export function OcrOverlayWindow() {
       }
     })()
 
+    void (async () => {
+      try {
+        const unlisten = await listen<SettingsUpdatedPayload>('settings-updated', (event) => {
+          if (!mounted) {
+            return
+          }
+          const next = resolveHintText(event.payload.target_language)
+          setHintText(next)
+        })
+        cleanupSettingsUpdated = unlisten
+      } catch {
+        cleanupSettingsUpdated = null
+      }
+    })()
+
     return () => {
       mounted = false
+      cleanupSettingsUpdated?.()
     }
   }, [])
 

@@ -309,6 +309,11 @@ function SettingsWindow() {
     })()
   }, [])
 
+  const handleResetDefaults = useCallback(() => {
+    appendDebugLog('settings', 'Reset settings to defaults')
+    handleSettingsChange(DEFAULT_SETTINGS)
+  }, [handleSettingsChange])
+
   const statusMessage = useMemo(() => {
     if (status === 'ready') {
       return copy.ready
@@ -330,9 +335,14 @@ function SettingsWindow() {
 
   return (
     <main className={`apl-settings-shell ${status === 'saving' ? 'is-saving' : ''}`}>
-      <div className="apl-settings-status-bar apl-settings-status-bar--compact" aria-live="polite">
-        <span className={`apl-settings-status-dot ${status === 'ready' || status === 'autoSaved' ? 'is-active' : ''}`} />
-        <span>{statusMessage}</span>
+      <div className="apl-settings-toolbar-clean">
+        <div className="apl-settings-status-bar apl-settings-status-bar--compact" aria-live="polite">
+          <span className={`apl-settings-status-dot ${status === 'ready' || status === 'autoSaved' ? 'is-active' : ''}`} />
+          <span>{statusMessage}</span>
+        </div>
+        <button type="button" onClick={handleResetDefaults}>
+          {copy.resetDefaults}
+        </button>
       </div>
 
       {loadingSettings && (

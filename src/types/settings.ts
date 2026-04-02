@@ -26,6 +26,7 @@ export interface AppSettings {
   popover_open_panel_mode: PopoverOpenPanelMode;
   popover_definition_language_mode: PopoverDefinitionLanguageMode;
   hotkey_translate_shortcut: string;
+  enable_hotkey_translate: boolean;
   hotkey_translate_ctrl_enter_send: boolean;
 }
 
@@ -107,10 +108,10 @@ export const DEFAULT_SETTINGS: AppSettings = {
   enable_translate: true,
   enable_audio: true,
   enable_ocr: true,
-  auto_play_audio_mode: "word",
+  auto_play_audio_mode: "off",
   popover_trigger_mode: "auto",
   popover_shortcut: "Ctrl+Shift+D",
-  ocr_hotkey: "Ctrl+Shift+S",
+  ocr_hotkey: "Alt+A",
   source_language: "en",
   target_language: "vi",
   quick_translate_source_language: "auto",
@@ -120,6 +121,7 @@ export const DEFAULT_SETTINGS: AppSettings = {
   popover_open_panel_mode: "none",
   popover_definition_language_mode: "output",
   hotkey_translate_shortcut: "Shift",
+  enable_hotkey_translate: true,
   hotkey_translate_ctrl_enter_send: false,
 };
 
@@ -183,6 +185,7 @@ export function sanitizeSettings(partial: Partial<AppSettings>): AppSettings {
     popover_open_panel_mode: panelMode,
     popover_definition_language_mode: languageMode,
     hotkey_translate_shortcut: hotkeyTranslateShortcut,
+    enable_hotkey_translate: merged.enable_hotkey_translate !== false,
     hotkey_translate_ctrl_enter_send:
       merged.hotkey_translate_ctrl_enter_send === true,
   };

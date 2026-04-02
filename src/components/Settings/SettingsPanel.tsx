@@ -118,7 +118,7 @@ export function SettingsPanel({ open, settings, onChange }: SettingsPanelProps) 
           const nextShortcut =
             field === 'hotkey_translate_shortcut'
               ? 'Shift'
-              : 'Ctrl+Shift+S'
+              : 'Alt+A'
           onChange(setField(settings, field, nextShortcut))
         }
         return
@@ -260,9 +260,34 @@ export function SettingsPanel({ open, settings, onChange }: SettingsPanelProps) 
         <div className="apl-settings-section">
           <h3>{copy.convertSectionTitle}</h3>
           <div className="apl-settings-grid">
+            <label className="apl-settings-ocr-hotkey-row" role="group" aria-label={copy.enableQuickTranslateHotkey}>
+              <input
+                type="checkbox"
+                checked={settings.enable_hotkey_translate}
+                onChange={(event) =>
+                  onChange(
+                    setField(
+                      settings,
+                      'enable_hotkey_translate',
+                      event.target.checked,
+                    ),
+                  )
+                }
+              />
+              <span className="apl-settings-ocr-hotkey-label">{copy.quickTranslateShortcut}</span>
+              <input
+                className="apl-settings-shortcut-input"
+                value={settings.hotkey_translate_shortcut}
+                placeholder={copy.shortcutPlaceholder}
+                readOnly
+                disabled={!settings.enable_hotkey_translate}
+                onKeyDown={handleShortcutCapture('hotkey_translate_shortcut')}
+              />
+            </label>
+
             <label className="apl-settings-field">
               <span>{copy.quickInputLanguage}</span>
-              <select value={settings.quick_translate_source_language} onChange={(e) => onChange(setField(settings, 'quick_translate_source_language', e.target.value as AppSettings['quick_translate_source_language']))}>
+              <select disabled={!settings.enable_hotkey_translate} value={settings.quick_translate_source_language} onChange={(e) => onChange(setField(settings, 'quick_translate_source_language', e.target.value as AppSettings['quick_translate_source_language']))}>
                 {INPUT_LANGUAGES.map((lang) => (
                   <option key={lang.code} value={lang.code}>{lang.label}</option>
                 ))}
@@ -271,26 +296,17 @@ export function SettingsPanel({ open, settings, onChange }: SettingsPanelProps) 
 
             <label className="apl-settings-field">
               <span>{copy.quickOutputLanguage}</span>
-              <select value={settings.quick_translate_target_language} onChange={(e) => onChange(setField(settings, 'quick_translate_target_language', e.target.value as AppSettings['quick_translate_target_language']))}>
+              <select disabled={!settings.enable_hotkey_translate} value={settings.quick_translate_target_language} onChange={(e) => onChange(setField(settings, 'quick_translate_target_language', e.target.value as AppSettings['quick_translate_target_language']))}>
                 {OUTPUT_LANGUAGES.map((lang) => (
                   <option key={lang.code} value={lang.code}>{lang.label}</option>
                 ))}
               </select>
             </label>
 
-            <label className="apl-settings-field">
-              <span>{copy.quickTranslateShortcut}</span>
-              <input
-                value={settings.hotkey_translate_shortcut}
-                placeholder={copy.shortcutPlaceholder}
-                readOnly
-                onKeyDown={handleShortcutCapture('hotkey_translate_shortcut')}
-              />
-            </label>
-
             <label className="apl-settings-toggle-row" role="group" aria-label={copy.quickCtrlEnterTranslateSend}>
               <input
                 type="checkbox"
+                disabled={!settings.enable_hotkey_translate}
                 checked={settings.hotkey_translate_ctrl_enter_send}
                 onChange={(event) =>
                   onChange(

@@ -8,6 +8,7 @@ export interface SettingsCopy {
   saving: string;
   saved: string;
   autoSaved: string;
+  resetDefaults: string;
   saveFailed: string;
   hotkeyTranslated: string;
   close: string;
@@ -40,6 +41,7 @@ export interface SettingsCopy {
   audioAll: string;
   quickTranslateInField: string;
   quickTranslateShortcut: string;
+  enableQuickTranslateHotkey: string;
   quickInputLanguage: string;
   quickOutputLanguage: string;
   quickCtrlEnterTranslateSend: string;
@@ -63,6 +65,7 @@ const EN_COPY: SettingsCopy = {
   saving: "Saving settings...",
   saved: "Settings saved",
   autoSaved: "Settings auto-saved",
+  resetDefaults: "Reset to defaults",
   saveFailed: "Failed to save settings",
   hotkeyTranslated: "Global translate shortcut replaced active text",
   close: "Close",
@@ -96,6 +99,7 @@ const EN_COPY: SettingsCopy = {
   audioAll: "All",
   quickTranslateInField: "Quick Translate In Field",
   quickTranslateShortcut: "Quick Translate Shortcut",
+  enableQuickTranslateHotkey: "Enable convert hotkey",
   quickInputLanguage: "Quick Input Language",
   quickOutputLanguage: "Quick Output Language",
   quickCtrlEnterTranslateSend: "Ctrl+Enter: translate then send",
@@ -120,6 +124,7 @@ const VI_COPY: SettingsCopy = {
   saving: "Đang lưu cài đặt...",
   saved: "Đã lưu cài đặt",
   autoSaved: "Đã tự động lưu cài đặt",
+  resetDefaults: "Khôi phục mặc định",
   saveFailed: "Lưu cài đặt thất bại",
   hotkeyTranslated: "Phím tắt dịch nhanh đã thay thế nội dung đang chọn",
   close: "Đóng",
@@ -153,6 +158,7 @@ const VI_COPY: SettingsCopy = {
   audioAll: "Từ và câu",
   quickTranslateInField: "Dịch nhanh trong ô nhập",
   quickTranslateShortcut: "Phím tắt dịch nhanh",
+  enableQuickTranslateHotkey: "Bật hotkey convert",
   quickInputLanguage: "Ngôn ngữ vào nhanh",
   quickOutputLanguage: "Ngôn ngữ ra nhanh",
   quickCtrlEnterTranslateSend: "Ctrl+Enter: dịch rồi gửi",

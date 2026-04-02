@@ -12,7 +12,7 @@ use crate::debug_trace;
 use crate::indicator;
 use crate::selection;
 
-const DEFAULT_OCR_SHORTCUT: &str = "Ctrl+Shift+S";
+const DEFAULT_OCR_SHORTCUT: &str = "Alt+A";
 const DEFAULT_TRANSLATE_SHORTCUT: &str = "Shift";
 const HOTKEY_CAPTURE_SETTLE_MS: u64 = 90;
 const HOTKEY_RETRY_DELAY_MS: u64 = 120;
@@ -311,7 +311,9 @@ pub fn register_hotkeys(app: &AppHandle, config: &AppConfig) -> Result<(), Strin
         true,
     );
     let translate_is_ctrl_enter = is_ctrl_enter_shortcut(&translate_shortcut);
-    let should_grab_ctrl_enter = should_use_ctrl_enter_grab(config) && translate_is_ctrl_enter;
+    let should_grab_ctrl_enter = config.enable_hotkey_translate
+        && should_use_ctrl_enter_grab(config)
+        && translate_is_ctrl_enter;
     let manager = app.global_shortcut();
 
     manager
@@ -327,7 +329,9 @@ pub fn register_hotkeys(app: &AppHandle, config: &AppConfig) -> Result<(), Strin
         "disabled".to_owned()
     };
 
-    let translate_state_text = if should_grab_ctrl_enter {
+    let translate_state_text = if !config.enable_hotkey_translate {
+        "disabled".to_owned()
+    } else if should_grab_ctrl_enter {
         format!("grabbed:{translate_shortcut}")
     } else if !is_modifier_only_shortcut(&translate_shortcut)
         && normalize_shortcut(&ocr_shortcut) != normalize_shortcut(&translate_shortcut)
@@ -368,7 +372,7 @@ fn resolve_shortcut_action(config: &AppConfig, shortcut: &str) -> Option<HotkeyA
     if config.enable_ocr && incoming == ocr {
         return Some(HotkeyAction::CaptureOcr);
     }
-    if incoming == translate {
+    if config.enable_hotkey_translate && incoming == translate {
         return Some(HotkeyAction::TranslateReplace);
     }
     None
@@ -466,6 +470,16 @@ pub async fn handle_modifier_shortcut(app: AppHandle) -> Result<(), String> {
         guard.clone()
     };
 
+    if !config.enable_hotkey_translate {
+        emit_hotkey_trace(
+            &app,
+            "modifier-skip",
+            "Shift",
+            "reason=convert-hotkey-disabled".to_owned(),
+        );
+        return Ok(());
+    }
+
     let translate = normalize_shortcut(&effective_shortcut(
         &config.hotkey_translate_shortcut,
         DEFAULT_TRANSLATE_SHORTCUT,
@@ -509,6 +523,16 @@ pub async fn handle_ctrl_enter_intercepted(app: AppHandle) -> Result<(), String>
             .map_err(|_| "config lock poisoned".to_owned())?;
         guard.clone()
     };
+
+    if !config.enable_hotkey_translate {
+        emit_hotkey_trace(
+            &app,
+            "ctrl-enter-intercept-skip",
+            "Ctrl+Enter",
+            "reason=convert-hotkey-disabled".to_owned(),
+        );
+        return Ok(());
+    }
 
     if !config.hotkey_translate_ctrl_enter_send {
         emit_hotkey_trace(

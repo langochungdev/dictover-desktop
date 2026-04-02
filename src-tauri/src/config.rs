@@ -84,6 +84,7 @@ pub struct AppConfig {
     pub popover_open_panel_mode: String,
     pub popover_definition_language_mode: String,
     pub hotkey_translate_shortcut: String,
+    pub enable_hotkey_translate: bool,
     pub hotkey_translate_ctrl_enter_send: bool,
 }
 
@@ -94,10 +95,10 @@ impl Default for AppConfig {
             enable_translate: true,
             enable_audio: true,
             enable_ocr: true,
-            auto_play_audio_mode: "word".to_owned(),
+            auto_play_audio_mode: "off".to_owned(),
             popover_trigger_mode: "auto".to_owned(),
             popover_shortcut: "Ctrl+Shift+D".to_owned(),
-            ocr_hotkey: "Ctrl+Shift+S".to_owned(),
+            ocr_hotkey: "Alt+A".to_owned(),
             source_language: "en".to_owned(),
             target_language: "vi".to_owned(),
             quick_translate_source_language: "auto".to_owned(),
@@ -107,6 +108,7 @@ impl Default for AppConfig {
             popover_open_panel_mode: "none".to_owned(),
             popover_definition_language_mode: "output".to_owned(),
             hotkey_translate_shortcut: "Shift".to_owned(),
+            enable_hotkey_translate: true,
             hotkey_translate_ctrl_enter_send: false,
         }
     }
@@ -117,13 +119,13 @@ impl AppConfig {
         let mut next = self;
         next.max_definitions = next.max_definitions.clamp(1, 10);
         if next.auto_play_audio_mode.is_empty() {
-            next.auto_play_audio_mode = "word".to_owned();
+            next.auto_play_audio_mode = "off".to_owned();
         }
         if next.popover_trigger_mode != "shortcut" {
             next.popover_trigger_mode = "auto".to_owned();
         }
         next.popover_shortcut = sanitize_shortcut(&next.popover_shortcut, "Ctrl+Shift+D", false);
-        next.ocr_hotkey = sanitize_shortcut(&next.ocr_hotkey, "Ctrl+Shift+S", false);
+        next.ocr_hotkey = sanitize_shortcut(&next.ocr_hotkey, "Alt+A", false);
         if next.source_language.is_empty() {
             next.source_language = "en".to_owned();
         }
