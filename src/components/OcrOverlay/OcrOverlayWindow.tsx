@@ -1,6 +1,20 @@
 import { useEffect, useMemo, useState } from 'react'
 import { invoke } from '@tauri-apps/api/core'
 import { appendDebugLog } from '@/services/debugLog'
+import { loadSettings } from '@/services/config'
+import type { OutputLanguageCode } from '@/constants/languages'
+
+const OCR_OVERLAY_HINTS: Record<OutputLanguageCode, string> = {
+  vi: 'Kéo chuột để chọn vùng ảnh - Esc để hủy',
+  en: 'Drag to select image area - Esc to cancel',
+  'zh-CN': '拖动鼠标选择图像区域 - Esc 取消',
+  ja: 'ドラッグして画像範囲を選択 - Escでキャンセル',
+  ko: '드래그하여 이미지 영역 선택 - Esc로 취소',
+  ru: 'Перетащите мышь, чтобы выбрать область изображения - Esc для отмены',
+  de: 'Ziehen, um den Bildbereich auszuwählen - Esc zum Abbrechen',
+  fr: 'Faites glisser pour sélectionner la zone d\'image - Échap pour annuler',
+  fi: 'Valitse kuva-alue vetämällä - Esc peruuttaa',
+}
 
 interface DragPoint {
   viewX: number
@@ -39,6 +53,29 @@ export function OcrOverlayWindow() {
   const [start, setStart] = useState<DragPoint | null>(null)
   const [current, setCurrent] = useState<DragPoint | null>(null)
   const [submitting, setSubmitting] = useState(false)
+  const [hintText, setHintText] = useState<string>(OCR_OVERLAY_HINTS.en)
+
+  useEffect(() => {
+    let mounted = true
+
+    void (async () => {
+      try {
+        const settings = await loadSettings()
+        const next = OCR_OVERLAY_HINTS[settings.target_language] ?? OCR_OVERLAY_HINTS.en
+        if (mounted) {
+          setHintText(next)
+        }
+      } catch {
+        if (mounted) {
+          setHintText(OCR_OVERLAY_HINTS.en)
+        }
+      }
+    })()
+
+    return () => {
+      mounted = false
+    }
+  }, [])
 
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
@@ -134,7 +171,7 @@ export function OcrOverlayWindow() {
       onPointerUp={handlePointerUp}
       onContextMenu={handleContextMenu}
     >
-      <div className="apl-ocr-overlay-hint">Keo chuot de chon vung anh - Esc de huy</div>
+      <div className="apl-ocr-overlay-hint">{hintText}</div>
       {selection && (
         <div
           className="apl-ocr-overlay-selection"

@@ -36,7 +36,15 @@ struct HotkeyTraceEvent {
     detail: String,
 }
 
-static LAST_TRANSLATION: OnceLock<Mutex<Option<(String, String)>>> = OnceLock::new();
+#[derive(Debug, Clone)]
+struct LastTranslationCache {
+    original: String,
+    translated: String,
+    source: String,
+    target: String,
+}
+
+static LAST_TRANSLATION: OnceLock<Mutex<Option<LastTranslationCache>>> = OnceLock::new();
 static HOTKEY_TRANSLATE_SEQ: AtomicU64 = AtomicU64::new(0);
 static HOTKEY_TRANSLATE_CANCELLED_SEQ: AtomicU64 = AtomicU64::new(0);
 
@@ -68,7 +76,7 @@ pub fn cancel_active_hotkey_translate() {
     HOTKEY_TRANSLATE_CANCELLED_SEQ.store(current, Ordering::Relaxed);
 }
 
-fn get_last_translation() -> Option<(String, String)> {
+fn get_last_translation() -> Option<LastTranslationCache> {
     LAST_TRANSLATION
         .get_or_init(|| Mutex::new(None))
         .lock()
@@ -76,12 +84,17 @@ fn get_last_translation() -> Option<(String, String)> {
         .clone()
 }
 
-fn set_last_translation(original: String, translated: String) {
+fn set_last_translation(original: String, translated: String, source: String, target: String) {
     let mut guard = LAST_TRANSLATION
         .get_or_init(|| Mutex::new(None))
         .lock()
         .unwrap();
-    *guard = Some((original, translated));
+    *guard = Some(LastTranslationCache {
+        original,
+        translated,
+        source,
+        target,
+    });
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -695,62 +708,77 @@ async fn on_translate_replace_triggered(
             return Ok::<Option<(String, String)>, String>(None);
         }
 
-        if let Some((last_orig, last_trans)) = get_last_translation() {
-            if source_text == last_trans {
-                if is_hotkey_translate_cancelled(request_id) {
+        let active_source = config.quick_translate_source_language.clone();
+        let active_target = config.quick_translate_target_language.clone();
+
+        if let Some(last) = get_last_translation() {
+            if last.source == active_source && last.target == active_target {
+                if source_text == last.translated {
+                    if is_hotkey_translate_cancelled(request_id) {
+                        emit_hotkey_trace(
+                            &app,
+                            "translate-cancelled",
+                            &shortcut,
+                            format!("requestId={request_id} stage=cache-revert"),
+                        );
+                        return Ok::<Option<(String, String)>, String>(None);
+                    }
                     emit_hotkey_trace(
                         &app,
-                        "translate-cancelled",
+                        "translate-cache-hit",
                         &shortcut,
-                        format!("requestId={request_id} stage=cache-revert"),
+                        format!("requestId={request_id} mode=revert-to-original"),
                     );
-                    return Ok::<Option<(String, String)>, String>(None);
-                }
-                emit_hotkey_trace(
-                    &app,
-                    "translate-cache-hit",
-                    &shortcut,
-                    format!("requestId={request_id} mode=revert-to-original"),
-                );
-                replace_active_document_text_stable(last_orig.clone()).await?;
-                emit_hotkey_trace(
-                    &app,
-                    "translate-replace-done",
-                    &shortcut,
-                    format!("requestId={request_id} mode=cache-revert"),
-                );
-                return Ok(Some((last_trans, last_orig)));
-            } else if source_text == last_orig {
-                if is_hotkey_translate_cancelled(request_id) {
+                    replace_active_document_text_stable(last.original.clone()).await?;
                     emit_hotkey_trace(
                         &app,
-                        "translate-cancelled",
+                        "translate-replace-done",
                         &shortcut,
-                        format!("requestId={request_id} stage=cache-apply"),
+                        format!("requestId={request_id} mode=cache-revert"),
                     );
-                    return Ok::<Option<(String, String)>, String>(None);
+                    return Ok(Some((last.translated, last.original)));
+                } else if source_text == last.original {
+                    if is_hotkey_translate_cancelled(request_id) {
+                        emit_hotkey_trace(
+                            &app,
+                            "translate-cancelled",
+                            &shortcut,
+                            format!("requestId={request_id} stage=cache-apply"),
+                        );
+                        return Ok::<Option<(String, String)>, String>(None);
+                    }
+                    emit_hotkey_trace(
+                        &app,
+                        "translate-cache-hit",
+                        &shortcut,
+                        format!("requestId={request_id} mode=apply-cached-translation"),
+                    );
+                    replace_active_document_text_stable(last.translated.clone()).await?;
+                    emit_hotkey_trace(
+                        &app,
+                        "translate-replace-done",
+                        &shortcut,
+                        format!("requestId={request_id} mode=cache-apply"),
+                    );
+                    return Ok(Some((last.original, last.translated)));
                 }
+            } else {
                 emit_hotkey_trace(
                     &app,
-                    "translate-cache-hit",
+                    "translate-cache-skip",
                     &shortcut,
-                    format!("requestId={request_id} mode=apply-cached-translation"),
+                    format!(
+                        "requestId={request_id} reason=language-changed cached={}->{} active={}->{}",
+                        last.source, last.target, active_source, active_target
+                    ),
                 );
-                replace_active_document_text_stable(last_trans.clone()).await?;
-                emit_hotkey_trace(
-                    &app,
-                    "translate-replace-done",
-                    &shortcut,
-                    format!("requestId={request_id} mode=cache-apply"),
-                );
-                return Ok(Some((last_orig, last_trans)));
             }
         }
 
         let payload = TranslatePayload {
             text: source_text.clone(),
-            source: config.quick_translate_source_language.clone(),
-            target: config.quick_translate_target_language.clone(),
+            source: active_source.clone(),
+            target: active_target.clone(),
         };
 
         emit_hotkey_trace(
@@ -835,7 +863,12 @@ async fn on_translate_replace_triggered(
             &shortcut,
             format!("requestId={request_id} mode=fresh-translation"),
         );
-        set_last_translation(source_text.clone(), translated.clone());
+        set_last_translation(
+            source_text.clone(),
+            translated.clone(),
+            active_source,
+            active_target,
+        );
 
         Ok(Some((source_text, translated)))
     }

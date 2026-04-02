@@ -479,6 +479,20 @@ button {
     flex-wrap: nowrap;
 }
 
+.apl-lookup-origin-prefix {
+    color: #5f6b86;
+    font-size: 0.92em;
+    font-weight: 700;
+    white-space: nowrap;
+    max-width: min(20ch, 34vw);
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.apl-lookup-headertext--ocr .apl-lookup-summary {
+    font-weight: 400;
+}
+
 .apl-lookup-summary {
     flex: 0 1 auto;
     max-width: min(34ch, 52vw);
@@ -600,6 +614,36 @@ button {
 
 .apl-translate-inline-actions {
     margin-top: 8px;
+}
+
+.apl-translate-vi--single-line {
+    margin-top: 0;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.apl-translate-ocr-stack {
+    display: grid;
+    gap: 2px;
+    margin-top: 0;
+}
+
+.apl-translate-ocr-origin,
+.apl-translate-ocr-meaning {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.apl-translate-ocr-origin {
+    color: #4d5b79;
+    font-size: 0.92em;
+}
+
+.apl-translate-ocr-meaning {
+    color: #24324a;
+    font-weight: 600;
 }
 
 .apl-translate-compact--paragraph {

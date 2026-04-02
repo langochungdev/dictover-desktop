@@ -9,16 +9,18 @@ export type PopoverState =
   | "lookup"
   | "translate"
   | "error";
-export type PopoverTrigger = "auto" | "shortcut";
+export type PopoverTrigger = "auto" | "shortcut" | "ocr";
 
 export interface PopoverData {
   selectedText: string;
+  trigger: PopoverTrigger;
   dictionary: DictionaryResult | null;
   translation: TranslateResult | null;
 }
 
 const EMPTY_DATA: PopoverData = {
   selectedText: "",
+  trigger: "auto",
   dictionary: null,
   translation: null,
 };
@@ -52,10 +54,7 @@ export function usePopover(settings: AppSettings) {
         close();
         return;
       }
-      if (
-        settings.popover_trigger_mode === "shortcut" &&
-        trigger !== "shortcut"
-      ) {
+      if (settings.popover_trigger_mode === "shortcut" && trigger === "auto") {
         return;
       }
 
@@ -65,6 +64,7 @@ export function usePopover(settings: AppSettings) {
       setError(null);
       const nextData: PopoverData = {
         selectedText,
+        trigger,
         dictionary: null,
         translation: null,
       };

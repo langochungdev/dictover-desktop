@@ -11,10 +11,12 @@ import { SubPanel } from '@/components/Popover/SubPanel'
 import { ImageSubPanel } from '@/components/Popover/ImageSubPanel'
 import { usePopoverResize } from '@/hooks/usePopoverResize'
 import type { SelectionAnchor } from '@/types/selectionAnchor'
+import type { PopoverTrigger } from '@/hooks/usePopover'
 
 interface PopoverProps {
   state: PopoverState
   selection: string
+  trigger: PopoverTrigger
   dictionary: DictionaryResult | null
   translation: TranslateResult | null
   error: string | null
@@ -99,7 +101,7 @@ function useAudioPlayer(dictionary: DictionaryResult | null, selectedText: strin
   return { audioPlaying, audioError, playAudio, startAudio, stopAudio }
 }
 
-export function Popover({ state, selection, dictionary, translation, error, panelMode, enableAudio, autoPlayAudioMode, selectionAnchor, onOpenSettings, onRequestClose }: PopoverProps) {
+export function Popover({ state, selection, trigger, dictionary, translation, error, panelMode, enableAudio, autoPlayAudioMode, selectionAnchor, onOpenSettings, onRequestClose }: PopoverProps) {
   const [activePanel, setActivePanel] = useState<PopoverOpenPanelMode>('none')
   const [lockedPopoverWidth, setLockedPopoverWidth] = useState<number | null>(null)
   const [baselinePopoverWidth, setBaselinePopoverWidth] = useState<number | null>(null)
@@ -113,7 +115,10 @@ export function Popover({ state, selection, dictionary, translation, error, pane
     () => (selectedText ? selectedText.split(/\s+/).filter(Boolean).length : 0),
     [selectedText],
   )
+  const isOcrTrigger = trigger === 'ocr'
   const isParagraphTranslate = state === 'translate' && selectedWordCount > 1
+  const isOcrParagraphTranslate = isOcrTrigger && isParagraphTranslate
+  const isOcrLookup = isOcrTrigger && state === 'lookup'
   const { audioError, playAudio, startAudio, stopAudio } = useAudioPlayer(dictionary, selectedText)
 
   const readPopoverWidth = useCallback(() => {
@@ -396,7 +401,8 @@ export function Popover({ state, selection, dictionary, translation, error, pane
           {state === 'lookup' && dictionary && lookupData && (
             <div className="apl-body apl-lookup-compact">
               <div className="apl-lookup-headerline">
-                <div className="apl-lookup-headertext">
+                <div className={`apl-lookup-headertext${isOcrLookup ? ' apl-lookup-headertext--ocr' : ''}`}>
+                  {isOcrLookup && <span className="apl-lookup-origin-prefix">{selectedText}:</span>}
                   <h2 className="apl-lookup-summary">{lookupData.word}</h2>
                   {lookupData.phonetic && <span className="apl-lookup-phonetic-inline">/{lookupData.phonetic}/</span>}
                   {lookupData.partOfSpeech && <span className="apl-pos-inline">{lookupData.partOfSpeech}</span>}
@@ -418,7 +424,16 @@ export function Popover({ state, selection, dictionary, translation, error, pane
 
           {state === 'translate' && translation && (
             <div className={`apl-body apl-translate-compact${isParagraphTranslate ? ' apl-translate-compact--paragraph' : ''}`}>
-              <div className="apl-translate-vi apl-translate-vi--primary">{translationLines.length > 0 ? translationLines.join(' ') : normalizeText(sanitizeMarkup(translation.result))}</div>
+              {isOcrParagraphTranslate ? (
+                <div className="apl-translate-ocr-stack">
+                  <div className="apl-translate-ocr-origin">{selectedText}</div>
+                  <div className="apl-translate-ocr-meaning">
+                    {translationLines.length > 0 ? translationLines.join(' ') : normalizeText(sanitizeMarkup(translation.result))}
+                  </div>
+                </div>
+              ) : (
+                <div className={`apl-translate-vi apl-translate-vi--primary${isParagraphTranslate ? ' apl-translate-vi--single-line' : ''}`}>{translationLines.length > 0 ? translationLines.join(' ') : normalizeText(sanitizeMarkup(translation.result))}</div>
+              )}
               <div className={`apl-inline-actions apl-translate-inline-actions${isParagraphTranslate ? ' apl-translate-inline-actions--floating' : ''}`}>
                 {isParagraphTranslate && (
                   <button type="button" className="apl-button apl-audio apl-audio-mini" aria-label="Play audio" onClick={() => void playAudio()}><AudioIcon /></button>

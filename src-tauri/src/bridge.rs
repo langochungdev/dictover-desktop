@@ -446,7 +446,7 @@ pub async fn submit_ocr_selection(
         return Ok(());
     }
 
-    let result = selection::show_popover_window(&app, text, "shortcut".to_owned(), Some(anchor));
+    let result = selection::show_popover_window(&app, text, "ocr".to_owned(), Some(anchor));
     match &result {
         Ok(()) => emit_hotkey_trace(
             &app,

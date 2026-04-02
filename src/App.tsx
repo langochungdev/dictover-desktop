@@ -23,7 +23,7 @@ import { DEFAULT_SETTINGS, sanitizeSettings, type AppSettings } from '@/types/se
 interface SelectionEventPayload {
   event_id?: number
   text: string
-  trigger: 'auto' | 'shortcut'
+  trigger: 'auto' | 'shortcut' | 'ocr'
   anchor?: SelectionAnchor | null
 }
 
@@ -756,6 +756,7 @@ function PopoverWindow() {
       <Popover
         state={state}
         selection={data.selectedText}
+        trigger={data.trigger}
         dictionary={data.dictionary}
         translation={data.translation}
         error={error}
@@ -902,6 +903,7 @@ function PreviewWindow() {
                 <Popover
                   state={previewState}
                   selection={previewSelection}
+                  trigger="shortcut"
                   dictionary={previewDictionary}
                   translation={previewTranslation}
                   error={previewError}
