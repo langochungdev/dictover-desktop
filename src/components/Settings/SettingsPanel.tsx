@@ -2,6 +2,7 @@ import { invoke } from '@tauri-apps/api/core'
 import { INPUT_LANGUAGES, OUTPUT_LANGUAGES } from '@/constants/languages'
 import type { KeyboardEvent, MouseEvent } from 'react'
 import { getSettingsCopy } from '@/constants/settingsI18n'
+import avtCat from '@/images/avt-cat.jpg'
 import type {
   AppSettings,
   AutoPlayAudioMode,
@@ -490,9 +491,10 @@ export function SettingsPanel({ open, settings, onChange }: SettingsPanelProps) 
               void handleProfileClick(event)
             }}
           >
-            <div className="apl-settings-avatar">AVT</div>
+            <img className="apl-settings-avatar" src={avtCat} alt="Cat avatar" />
             <div className="apl-settings-profile-meta">
               <div className="apl-settings-profile-name">langochung.me</div>
+              <div className="apl-settings-profile-caption">langochungdev@gmail.com</div>
             </div>
           </a>
         </div>

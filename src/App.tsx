@@ -168,6 +168,12 @@ function SettingsWindow() {
   const lastSyncedWindowHeightRef = useRef(0)
   const copy = getSettingsCopy(settings.target_language)
   const hasTauriBridge = typeof window !== 'undefined' && '__TAURI_INTERNALS__' in window
+  const closeSettingsWindow = useCallback(() => {
+    if (!hasTauriBridge) {
+      return
+    }
+    void invoke('hide_settings_window').catch(() => undefined)
+  }, [hasTauriBridge])
 
   useEffect(() => {
     settingsRef.current = settings
@@ -251,7 +257,7 @@ function SettingsWindow() {
       }
 
       if (event.key === 'Escape') {
-        void invoke('hide_settings_window').catch(() => undefined)
+        closeSettingsWindow()
       }
     }
 
@@ -260,7 +266,37 @@ function SettingsWindow() {
     return () => {
       window.removeEventListener('keydown', onKeydown)
     }
-  }, [])
+  }, [closeSettingsWindow])
+
+  useEffect(() => {
+    if (!hasTauriBridge) {
+      return
+    }
+
+    const onPointerDown = (event: PointerEvent) => {
+      const target = event.target as Node | null
+      const shell = shellRef.current
+      if (!target || !shell) {
+        return
+      }
+      if (shell.contains(target)) {
+        return
+      }
+      closeSettingsWindow()
+    }
+
+    const onWindowBlur = () => {
+      closeSettingsWindow()
+    }
+
+    window.addEventListener('pointerdown', onPointerDown)
+    window.addEventListener('blur', onWindowBlur)
+
+    return () => {
+      window.removeEventListener('pointerdown', onPointerDown)
+      window.removeEventListener('blur', onWindowBlur)
+    }
+  }, [closeSettingsWindow, hasTauriBridge])
 
   const syncSettingsWindowSize = useCallback(async () => {
     if (!hasTauriBridge || !shellRef.current) {

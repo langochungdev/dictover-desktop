@@ -1503,12 +1503,8 @@ button {
     border-radius: 50%;
     background: var(--apl-settings-accent-soft);
     border: 1px solid var(--apl-settings-line-strong);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 11px;
-    font-weight: 700;
-    color: var(--apl-settings-accent);
+    object-fit: cover;
+    display: block;
     flex-shrink: 0;
 }
 
