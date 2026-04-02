@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { invoke } from '@tauri-apps/api/core'
-import { listen } from '@tauri-apps/api/event'
+import { emit, listen } from '@tauri-apps/api/event'
 import { getCurrentWindow } from '@tauri-apps/api/window'
 import { Popover } from '@/components/Popover/Popover'
 import { DebugLogWindow } from '@/components/DebugLog/DebugLogWindow'
@@ -276,6 +276,8 @@ function SettingsWindow() {
     const previous = settingsRef.current
     const changedKeys = changedSettingKeys(previous, next)
     setSettings(next)
+
+    void emit('settings-updated', sanitizeSettings(next)).catch(() => undefined)
 
     if (changedKeys.length === 0) {
       return
@@ -757,6 +759,8 @@ function PopoverWindow() {
         state={state}
         selection={data.selectedText}
         trigger={data.trigger}
+        lookupDisplayWord={data.lookupDisplayWord}
+        lookupDisplayDefinition={data.lookupDisplayDefinition}
         dictionary={data.dictionary}
         translation={data.translation}
         error={error}

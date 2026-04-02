@@ -12,7 +12,6 @@ use crate::debug_trace;
 use crate::indicator;
 use crate::selection;
 
-const DEFAULT_POPOVER_SHORTCUT: &str = "Ctrl+Shift+D";
 const DEFAULT_OCR_SHORTCUT: &str = "Ctrl+Shift+S";
 const DEFAULT_TRANSLATE_SHORTCUT: &str = "Shift";
 const HOTKEY_CAPTURE_SETTLE_MS: u64 = 90;
@@ -99,7 +98,6 @@ fn set_last_translation(original: String, translated: String, source: String, ta
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum HotkeyAction {
-    ShowPopover,
     CaptureOcr,
     TranslateReplace,
 }
@@ -306,8 +304,6 @@ pub fn parse_hotkey(shortcut: &str) -> Result<(), String> {
 }
 
 pub fn register_hotkeys(app: &AppHandle, config: &AppConfig) -> Result<(), String> {
-    let popover_shortcut =
-        effective_shortcut(&config.popover_shortcut, DEFAULT_POPOVER_SHORTCUT, false);
     let ocr_shortcut = effective_shortcut(&config.ocr_hotkey, DEFAULT_OCR_SHORTCUT, false);
     let translate_shortcut = effective_shortcut(
         &config.hotkey_translate_shortcut,
@@ -321,19 +317,12 @@ pub fn register_hotkeys(app: &AppHandle, config: &AppConfig) -> Result<(), Strin
     manager
         .unregister_all()
         .map_err(|err| format!("unregister hotkeys failed: {err}"))?;
-    manager
-        .register(popover_shortcut.as_str())
-        .map_err(|err| format!("register popover shortcut failed: {err}"))?;
 
-    let ocr_state_text = if config.enable_ocr
-        && normalize_shortcut(&ocr_shortcut) != normalize_shortcut(&popover_shortcut)
-    {
+    let ocr_state_text = if config.enable_ocr {
         manager
             .register(ocr_shortcut.as_str())
             .map_err(|err| format!("register ocr shortcut failed: {err}"))?;
         format!("registered:{ocr_shortcut}")
-    } else if config.enable_ocr {
-        format!("skipped:duplicate-with-popover:{ocr_shortcut}")
     } else {
         "disabled".to_owned()
     };
@@ -341,7 +330,6 @@ pub fn register_hotkeys(app: &AppHandle, config: &AppConfig) -> Result<(), Strin
     let translate_state_text = if should_grab_ctrl_enter {
         format!("grabbed:{translate_shortcut}")
     } else if !is_modifier_only_shortcut(&translate_shortcut)
-        && normalize_shortcut(&popover_shortcut) != normalize_shortcut(&translate_shortcut)
         && normalize_shortcut(&ocr_shortcut) != normalize_shortcut(&translate_shortcut)
     {
         manager
@@ -358,9 +346,7 @@ pub fn register_hotkeys(app: &AppHandle, config: &AppConfig) -> Result<(), Strin
         app,
         "register",
         "system",
-        format!(
-            "popover={popover_shortcut} | ocr={ocr_state_text} | translate={translate_state_text}"
-        ),
+        format!("ocr={ocr_state_text} | translate={translate_state_text}"),
     );
 
     Ok(())
@@ -373,25 +359,14 @@ fn resolve_shortcut_action(config: &AppConfig, shortcut: &str) -> Option<HotkeyA
         DEFAULT_OCR_SHORTCUT,
         false,
     ));
-    let popover = normalize_shortcut(&effective_shortcut(
-        &config.popover_shortcut,
-        DEFAULT_POPOVER_SHORTCUT,
-        false,
-    ));
     let translate = normalize_shortcut(&effective_shortcut(
         &config.hotkey_translate_shortcut,
         DEFAULT_TRANSLATE_SHORTCUT,
         true,
     ));
 
-    if popover == translate && incoming == translate {
-        return Some(HotkeyAction::TranslateReplace);
-    }
     if config.enable_ocr && incoming == ocr {
         return Some(HotkeyAction::CaptureOcr);
-    }
-    if incoming == popover {
-        return Some(HotkeyAction::ShowPopover);
     }
     if incoming == translate {
         return Some(HotkeyAction::TranslateReplace);
@@ -418,12 +393,7 @@ pub async fn handle_global_shortcut(app: AppHandle, shortcut: String) -> Result<
             "unmatched",
             &shortcut,
             format!(
-                "normalized={incoming} | popover={} | ocr={} | translate={} | ocrEnabled={}",
-                normalize_shortcut(&effective_shortcut(
-                    &config.popover_shortcut,
-                    DEFAULT_POPOVER_SHORTCUT,
-                    false,
-                )),
+                "normalized={incoming} | ocr={} | translate={} | ocrEnabled={}",
                 normalize_shortcut(&effective_shortcut(
                     &config.ocr_hotkey,
                     DEFAULT_OCR_SHORTCUT,
@@ -441,7 +411,6 @@ pub async fn handle_global_shortcut(app: AppHandle, shortcut: String) -> Result<
     };
 
     let action_name = match action {
-        HotkeyAction::ShowPopover => "show-popover",
         HotkeyAction::CaptureOcr => "capture-ocr",
         HotkeyAction::TranslateReplace => "translate-replace",
     };
@@ -453,8 +422,7 @@ pub async fn handle_global_shortcut(app: AppHandle, shortcut: String) -> Result<
     );
 
     let result = match action {
-        HotkeyAction::ShowPopover => on_popover_triggered(app.clone()).await,
-        HotkeyAction::CaptureOcr => on_ocr_capture_triggered(app.clone()),
+        HotkeyAction::CaptureOcr => on_ocr_capture_triggered(app.clone()).await,
         HotkeyAction::TranslateReplace => {
             on_translate_replace_triggered(app.clone(), config, shortcut.clone()).await
         }
@@ -594,6 +562,25 @@ async fn capture_active_document_text_stable() -> Result<String, String> {
     Ok(fallback)
 }
 
+async fn capture_selection_text_stable() -> Result<String, String> {
+    for attempt in 0..HOTKEY_CAPTURE_MAX_ATTEMPTS {
+        let wait_ms = HOTKEY_CAPTURE_SETTLE_MS + HOTKEY_RETRY_DELAY_MS * u64::from(attempt);
+        let captured = tauri::async_runtime::spawn_blocking(move || {
+            std::thread::sleep(Duration::from_millis(wait_ms));
+            automation::capture_selection_text()
+        })
+        .await
+        .map_err(|err| format!("capture selection task failed: {err}"))??;
+
+        let cleaned = captured.replace('\r', "");
+        if !cleaned.trim().is_empty() {
+            return Ok(cleaned);
+        }
+    }
+
+    Ok(String::new())
+}
+
 async fn replace_active_document_text_stable(replacement: String) -> Result<(), String> {
     tauri::async_runtime::spawn_blocking(move || {
         std::thread::sleep(Duration::from_millis(HOTKEY_CAPTURE_SETTLE_MS));
@@ -604,32 +591,35 @@ async fn replace_active_document_text_stable(replacement: String) -> Result<(), 
     Ok(())
 }
 
-async fn on_popover_triggered(app: AppHandle) -> Result<(), String> {
-    if selection::is_any_app_window_focused(&app) {
-        return Ok(());
+async fn on_ocr_capture_triggered(app: AppHandle) -> Result<(), String> {
+    let selected = capture_selection_text_stable().await?;
+
+    if !selected.trim().is_empty() {
+        let cursor = tauri::async_runtime::spawn_blocking(automation::cursor_position)
+            .await
+            .map_err(|err| format!("capture cursor task failed: {err}"))?;
+
+        emit_hotkey_trace(
+            &app,
+            "ocr-hotkey-selected-text",
+            "ocr",
+            format!("selectedLen={}", selected.trim().chars().count()),
+        );
+
+        return selection::show_popover_window(
+            &app,
+            selected.trim().to_owned(),
+            "shortcut".to_owned(),
+            cursor,
+        );
     }
 
-    let raw_text = tauri::async_runtime::spawn_blocking(automation::capture_selection_text)
-        .await
-        .map_err(|err| format!("capture selection task failed: {err}"))??;
-    let selected = raw_text.replace('\r', "");
-    if selected.trim().is_empty() {
-        return Ok(());
-    }
-
-    let cursor = tauri::async_runtime::spawn_blocking(automation::cursor_position)
-        .await
-        .map_err(|err| format!("capture cursor task failed: {err}"))?;
-
-    selection::show_popover_window(
+    emit_hotkey_trace(
         &app,
-        selected.trim().to_owned(),
-        "shortcut".to_owned(),
-        cursor,
-    )
-}
-
-fn on_ocr_capture_triggered(app: AppHandle) -> Result<(), String> {
+        "ocr-hotkey-open-overlay",
+        "ocr",
+        "selectedLen=0".to_owned(),
+    );
     bridge::show_ocr_overlay(app)
 }
 

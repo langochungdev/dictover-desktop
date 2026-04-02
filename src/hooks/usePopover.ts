@@ -14,6 +14,8 @@ export type PopoverTrigger = "auto" | "shortcut" | "ocr";
 export interface PopoverData {
   selectedText: string;
   trigger: PopoverTrigger;
+  lookupDisplayWord: string | null;
+  lookupDisplayDefinition: string | null;
   dictionary: DictionaryResult | null;
   translation: TranslateResult | null;
 }
@@ -21,9 +23,43 @@ export interface PopoverData {
 const EMPTY_DATA: PopoverData = {
   selectedText: "",
   trigger: "auto",
+  lookupDisplayWord: null,
+  lookupDisplayDefinition: null,
   dictionary: null,
   translation: null,
 };
+
+function normalizeSingleLineText(input: string): string {
+  return input.replace(/\s+/g, " ").trim();
+}
+
+function getFirstDefinition(dictionary: DictionaryResult): string {
+  for (const meaning of dictionary.meanings) {
+    for (const definition of meaning.definitions) {
+      const normalized = normalizeSingleLineText(definition);
+      if (normalized) {
+        return normalized;
+      }
+    }
+  }
+  return "";
+}
+
+function resolveDefinitionLanguage(
+  settings: AppSettings,
+  lookupSourceLanguage: string,
+): string {
+  if (settings.popover_definition_language_mode === "english") {
+    return "en";
+  }
+  if (settings.popover_definition_language_mode === "output") {
+    return settings.target_language;
+  }
+  if (settings.source_language === "auto") {
+    return lookupSourceLanguage;
+  }
+  return settings.source_language;
+}
 
 function countWords(input: string): number {
   const words = input.trim().split(/\s+/).filter(Boolean);
@@ -65,6 +101,8 @@ export function usePopover(settings: AppSettings) {
       const nextData: PopoverData = {
         selectedText,
         trigger,
+        lookupDisplayWord: null,
+        lookupDisplayDefinition: null,
         dictionary: null,
         translation: null,
       };
@@ -107,13 +145,65 @@ export function usePopover(settings: AppSettings) {
               Array.isArray(dictionary.meanings) &&
               dictionary.meanings.length > 0
             ) {
-              nextData.dictionary = {
+              const limitedDictionary: DictionaryResult = {
                 ...dictionary,
                 meanings: dictionary.meanings.slice(
                   0,
                   settings.max_definitions,
                 ),
               };
+
+              const definitionLanguage = resolveDefinitionLanguage(
+                settings,
+                source,
+              );
+              nextData.dictionary = limitedDictionary;
+
+              const firstDefinition = getFirstDefinition(limitedDictionary);
+              if (firstDefinition) {
+                if (definitionLanguage !== source) {
+                  try {
+                    const translatedDefinition = await translateText({
+                      text: firstDefinition,
+                      source,
+                      target: definitionLanguage,
+                    });
+                    nextData.lookupDisplayDefinition =
+                      normalizeSingleLineText(translatedDefinition.result) ||
+                      firstDefinition;
+                  } catch {
+                    nextData.lookupDisplayDefinition = firstDefinition;
+                  }
+                } else {
+                  nextData.lookupDisplayDefinition = firstDefinition;
+                }
+              }
+
+              if (settings.target_language !== source) {
+                try {
+                  const lookupDisplayWord = await translateText({
+                    text: selectedText,
+                    source,
+                    target: settings.target_language,
+                  });
+                  nextData.lookupDisplayWord = normalizeSingleLineText(
+                    lookupDisplayWord.result,
+                  );
+                } catch {
+                  nextData.lookupDisplayWord =
+                    nextData.dictionary.word || selectedText;
+                }
+              }
+
+              if (!nextData.lookupDisplayWord) {
+                nextData.lookupDisplayWord =
+                  nextData.dictionary.word || selectedText;
+              }
+
+              if (shouldDiscardResult()) {
+                return;
+              }
+
               setData(nextData);
               setState("lookup");
               return;

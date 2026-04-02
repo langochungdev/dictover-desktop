@@ -17,6 +17,8 @@ interface PopoverProps {
   state: PopoverState
   selection: string
   trigger: PopoverTrigger
+  lookupDisplayWord?: string | null
+  lookupDisplayDefinition?: string | null
   dictionary: DictionaryResult | null
   translation: TranslateResult | null
   error: string | null
@@ -101,7 +103,7 @@ function useAudioPlayer(dictionary: DictionaryResult | null, selectedText: strin
   return { audioPlaying, audioError, playAudio, startAudio, stopAudio }
 }
 
-export function Popover({ state, selection, trigger, dictionary, translation, error, panelMode, enableAudio, autoPlayAudioMode, selectionAnchor, onOpenSettings, onRequestClose }: PopoverProps) {
+export function Popover({ state, selection, trigger, lookupDisplayWord, lookupDisplayDefinition, dictionary, translation, error, panelMode, enableAudio, autoPlayAudioMode, selectionAnchor, onOpenSettings, onRequestClose }: PopoverProps) {
   const [activePanel, setActivePanel] = useState<PopoverOpenPanelMode>('none')
   const [lockedPopoverWidth, setLockedPopoverWidth] = useState<number | null>(null)
   const [baselinePopoverWidth, setBaselinePopoverWidth] = useState<number | null>(null)
@@ -172,13 +174,13 @@ export function Popover({ state, selection, trigger, dictionary, translation, er
       return { header: 0, definition: 0 }
     }
     const header = normalizeText(
-      sanitizeMarkup(`${dictionary.word || selectedText} ${dictionary.phonetic || ''} ${dictionary.meanings?.[0]?.part_of_speech || ''}`),
+      sanitizeMarkup(`${lookupDisplayWord || dictionary.word || selectedText} ${dictionary.phonetic || ''} ${dictionary.meanings?.[0]?.part_of_speech || ''}`),
     ).length
     const definition = normalizeText(
-      sanitizeMarkup(dictionary.meanings?.[0]?.definitions?.[0] || ''),
+      sanitizeMarkup(lookupDisplayDefinition || dictionary.meanings?.[0]?.definitions?.[0] || ''),
     ).length
     return { header, definition }
-  }, [dictionary, selectedText, state])
+  }, [dictionary, lookupDisplayDefinition, lookupDisplayWord, selectedText, state])
 
   const compactTranslateLength = useMemo(() => {
     if (state !== 'translate' || !translation) {
@@ -367,8 +369,8 @@ export function Popover({ state, selection, trigger, dictionary, translation, er
 
   if (state === 'idle' || state === 'loading') return null
 
-  const lookupData = dictionary ? { word: normalizeText(sanitizeMarkup(dictionary.word || selectedText)), phonetic: normalizePhonetic(dictionary.phonetic || ''), ...lookupPrimary(dictionary) } : null
-  const definitionText = lookupData?.firstDefinition || ''
+  const lookupData = dictionary ? { word: normalizeText(sanitizeMarkup(lookupDisplayWord || dictionary.word || selectedText)), phonetic: normalizePhonetic(dictionary.phonetic || ''), ...lookupPrimary(dictionary) } : null
+  const definitionText = normalizeText(sanitizeMarkup(lookupDisplayDefinition || lookupData?.firstDefinition || ''))
   const translationLines = translation ? sanitizeMarkup(translation.result).split(/\r?\n+/).map(l => normalizeText(l)).filter(Boolean) : []
   const portalTarget = typeof document !== 'undefined' ? document.body : null
   if (!portalTarget) return null

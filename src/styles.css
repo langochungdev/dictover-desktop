@@ -664,6 +664,23 @@ button {
     margin-top: 0;
 }
 
+.apl-popover--translate-paragraph .apl-translate-vi--single-line {
+    white-space: normal;
+    overflow: visible;
+    text-overflow: clip;
+    overflow-wrap: anywhere;
+    word-break: break-word;
+}
+
+.apl-popover--translate-paragraph .apl-translate-ocr-origin,
+.apl-popover--translate-paragraph .apl-translate-ocr-meaning {
+    white-space: normal;
+    overflow: visible;
+    text-overflow: clip;
+    overflow-wrap: anywhere;
+    word-break: break-word;
+}
+
 .apl-translate-inline-actions--floating {
     position: absolute;
     top: 0;

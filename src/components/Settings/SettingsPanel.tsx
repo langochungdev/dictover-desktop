@@ -5,8 +5,7 @@ import type {
   AppSettings,
   AutoPlayAudioMode,
   PopoverDefinitionLanguageMode,
-  PopoverOpenPanelMode,
-  PopoverTriggerMode
+  PopoverOpenPanelMode
 } from '@/types/settings'
 
 interface SettingsPanelProps {
@@ -99,7 +98,7 @@ export function SettingsPanel({ open, settings, onChange }: SettingsPanelProps) 
   const copy = getSettingsCopy(settings.target_language)
 
   const handleShortcutCapture =
-    (field: 'popover_shortcut' | 'ocr_hotkey' | 'hotkey_translate_shortcut') =>
+    (field: 'ocr_hotkey' | 'hotkey_translate_shortcut') =>
     (event: KeyboardEvent<HTMLInputElement>) => {
       if (event.key === 'Tab') {
         return
@@ -119,9 +118,7 @@ export function SettingsPanel({ open, settings, onChange }: SettingsPanelProps) 
           const nextShortcut =
             field === 'hotkey_translate_shortcut'
               ? 'Shift'
-              : field === 'ocr_hotkey'
-                ? 'Ctrl+Shift+S'
-                : 'Ctrl+Shift+D'
+              : 'Ctrl+Shift+S'
           onChange(setField(settings, field, nextShortcut))
         }
         return
@@ -138,10 +135,6 @@ export function SettingsPanel({ open, settings, onChange }: SettingsPanelProps) 
       source_language: nextSource,
       target_language: nextTarget
     })
-  }
-
-  const setTriggerMode = (mode: PopoverTriggerMode) => {
-    onChange(setField(settings, 'popover_trigger_mode', mode))
   }
 
   return (
@@ -174,35 +167,22 @@ export function SettingsPanel({ open, settings, onChange }: SettingsPanelProps) 
           </div>
 
           <div className="apl-settings-section">
-            <label className="apl-settings-radio">
-              <input type="radio" name="apl-trigger-mode" value="auto" checked={settings.popover_trigger_mode === 'auto'} onChange={() => setTriggerMode('auto')} />
-              <span className="apl-settings-radio-label">{copy.triggerAuto}</span>
+            <label className="apl-settings-toggle-row" role="group" aria-label={copy.autoTranslateOnSelect}>
+              <input
+                type="checkbox"
+                checked={settings.popover_trigger_mode === 'auto'}
+                onChange={(event) =>
+                  onChange(
+                    setField(
+                      settings,
+                      'popover_trigger_mode',
+                      event.target.checked ? 'auto' : 'shortcut',
+                    ),
+                  )
+                }
+              />
+              <span>{copy.autoTranslateOnSelect}</span>
             </label>
-
-            <div className="apl-settings-radio-shortcut-row">
-              <label className="apl-settings-radio apl-settings-radio--inline">
-                <input type="radio" name="apl-trigger-mode" value="shortcut" checked={settings.popover_trigger_mode === 'shortcut'} onChange={() => setTriggerMode('shortcut')} />
-                <span className="apl-settings-radio-label">{copy.triggerShortcut}</span>
-              </label>
-
-              <div className="apl-settings-shortcut-group">
-                <label className="apl-settings-field apl-settings-field--shortcut-inline">
-                  <span>{copy.popoverShortcut}</span>
-                  <input
-                    className="apl-settings-shortcut-input"
-                    value={settings.popover_shortcut}
-                    placeholder={copy.shortcutPlaceholder}
-                    readOnly
-                    disabled={settings.popover_trigger_mode !== 'shortcut'}
-                    onKeyDown={handleShortcutCapture('popover_shortcut')}
-                  />
-                </label>
-              </div>
-            </div>
-
-            <div className="apl-settings-shortcut-group">
-              <div className="apl-settings-hint">{copy.shortcutHint}</div>
-            </div>
 
             <div className="apl-settings-shortcut-group">
               <div className="apl-settings-hint">{copy.ocrLanguageHint}</div>
