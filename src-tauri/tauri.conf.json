@@ -97,6 +97,9 @@
       "binaries/NotoSansCJK-Regular.ttc"
     ],
     "windows": {
+      "nsis": {
+        "installerHooks": "./windows/hooks.nsh"
+      },
       "webviewInstallMode": {
         "type": "offlineInstaller"
       }

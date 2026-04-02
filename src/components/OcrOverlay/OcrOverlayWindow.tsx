@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { invoke } from '@tauri-apps/api/core'
 import { listen } from '@tauri-apps/api/event'
 import { getCurrentWindow } from '@tauri-apps/api/window'
+import { getSettingsCopy } from '@/constants/settingsI18n'
 import { appendDebugLog } from '@/services/debugLog'
 import { loadSettings } from '@/services/config'
 import type { InputLanguageCode, OutputLanguageCode } from '@/constants/languages'
@@ -101,6 +102,7 @@ export function OcrOverlayWindow() {
   const [copyStatus, setCopyStatus] = useState<CopyStatus>('idle')
   const copyStatusTimerRef = useRef<number | null>(null)
   const hasTauriBridge = typeof window !== 'undefined' && '__TAURI_INTERNALS__' in window
+  const copy = useMemo(() => getSettingsCopy(ocrTargetLanguage), [ocrTargetLanguage])
 
   useEffect(() => {
     let mounted = true
@@ -502,7 +504,7 @@ export function OcrOverlayWindow() {
 
           <div className="apl-ocr-result-toolbar" role="group" aria-label="OCR result actions">
             <button type="button" className="apl-ocr-result-btn" onClick={() => void copyResultImage()}>
-              Copy image
+              {copy.ocrCopyImage}
             </button>
             <button
               type="button"
@@ -510,15 +512,15 @@ export function OcrOverlayWindow() {
               onClick={() => void copyResultText()}
               disabled={!result.originalText.trim()}
             >
-              Copy text
+              {copy.ocrCopyText}
             </button>
           </div>
 
           {copyStatus !== 'idle' && (
             <p className={`apl-ocr-result-status${copyStatus === 'failed' ? ' is-error' : ''}`}>
-              {copyStatus === 'imageCopied' && 'Image copied'}
-              {copyStatus === 'textCopied' && 'Text copied'}
-              {copyStatus === 'failed' && 'Copy failed'}
+              {copyStatus === 'imageCopied' && copy.ocrImageCopied}
+              {copyStatus === 'textCopied' && copy.ocrTextCopied}
+              {copyStatus === 'failed' && copy.ocrCopyFailed}
             </p>
           )}
         </section>

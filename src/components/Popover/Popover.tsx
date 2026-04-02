@@ -2,8 +2,10 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { invoke } from '@tauri-apps/api/core'
 import { createPortal } from 'react-dom'
+import { getSettingsCopy } from '@/constants/settingsI18n'
 import type { OcrImageOverlayData, PopoverState } from '@/hooks/usePopover'
 import type { AutoPlayAudioMode, PopoverOpenPanelMode } from '@/types/settings'
+import type { OutputLanguageCode } from '@/constants/languages'
 import type { DictionaryResult } from '@/services/dictionary'
 import type { TranslateResult } from '@/services/translate'
 import { normalizeText, sanitizeMarkup, normalizePhonetic, lookupPrimary, resolveImageQuery, buildAlternativeAudioUrl } from '@/components/Popover/popover.utils'
@@ -27,6 +29,7 @@ interface PopoverProps {
   panelMode: PopoverOpenPanelMode
   enableAudio: boolean
   autoPlayAudioMode: AutoPlayAudioMode
+  outputLanguage: OutputLanguageCode
   selectionAnchor: SelectionAnchor | null
   onOpenSettings?: () => void
   onRequestClose?: (reason?: string) => void
@@ -105,7 +108,7 @@ function useAudioPlayer(dictionary: DictionaryResult | null, selectedText: strin
   return { audioPlaying, audioError, playAudio, startAudio, stopAudio }
 }
 
-export function Popover({ state, selection, trigger, lookupDisplayWord, lookupDisplayDefinition, dictionary, translation, ocrImageOverlay, error, panelMode, enableAudio, autoPlayAudioMode, selectionAnchor, onOpenSettings, onRequestClose }: PopoverProps) {
+export function Popover({ state, selection, trigger, lookupDisplayWord, lookupDisplayDefinition, dictionary, translation, ocrImageOverlay, error, panelMode, enableAudio, autoPlayAudioMode, outputLanguage, selectionAnchor, onOpenSettings, onRequestClose }: PopoverProps) {
   const [activePanel, setActivePanel] = useState<PopoverOpenPanelMode>('none')
   const [lockedPopoverWidth, setLockedPopoverWidth] = useState<number | null>(null)
   const [baselinePopoverWidth, setBaselinePopoverWidth] = useState<number | null>(null)
@@ -121,7 +124,9 @@ export function Popover({ state, selection, trigger, lookupDisplayWord, lookupDi
     () => (selectedText ? selectedText.split(/\s+/).filter(Boolean).length : 0),
     [selectedText],
   )
+  const isSingleWordSelection = selectedWordCount === 1
   const isOcrTrigger = trigger === 'ocr'
+  const copy = getSettingsCopy(outputLanguage)
   const isParagraphTranslate = state === 'translate' && selectedWordCount > 1
   const isOcrParagraphTranslate = isOcrTrigger && isParagraphTranslate
   const isOcrLookup = isOcrTrigger && state === 'lookup'
@@ -219,7 +224,9 @@ export function Popover({ state, selection, trigger, lookupDisplayWord, lookupDi
     setLockedPopoverWidth(null)
   }, [])
 
-  useEffect(() => { setActivePanel(panelMode) }, [panelMode, selection, state])
+  useEffect(() => {
+    setActivePanel(isSingleWordSelection ? panelMode : 'none')
+  }, [isSingleWordSelection, panelMode, selection, state])
   useEffect(() => { setBaselinePopoverWidth(null); setLockedPopoverWidth(null) }, [selection])
   useEffect(() => {
     setOverlayCopyStatus('idle')
@@ -544,7 +551,7 @@ export function Popover({ state, selection, trigger, lookupDisplayWord, lookupDi
                   onClick={() => void copyOverlayImage()}
                   disabled={!ocrOverlayImageSrc}
                 >
-                  Copy image
+                  {copy.ocrCopyImage}
                 </button>
                 <button
                   type="button"
@@ -552,14 +559,14 @@ export function Popover({ state, selection, trigger, lookupDisplayWord, lookupDi
                   onClick={() => void copyOverlayText()}
                   disabled={!ocrOverlayCopyText}
                 >
-                  Copy text
+                  {copy.ocrCopyText}
                 </button>
               </div>
               {overlayCopyStatus !== 'idle' && (
                 <p className={`apl-ocr-image-overlay-status${overlayCopyStatus === 'failed' ? ' is-error' : ''}`}>
-                  {overlayCopyStatus === 'imageCopied' && 'Image copied'}
-                  {overlayCopyStatus === 'textCopied' && 'Text copied'}
-                  {overlayCopyStatus === 'failed' && 'Copy failed'}
+                  {overlayCopyStatus === 'imageCopied' && copy.ocrImageCopied}
+                  {overlayCopyStatus === 'textCopied' && copy.ocrTextCopied}
+                  {overlayCopyStatus === 'failed' && copy.ocrCopyFailed}
                 </p>
               )}
             </div>

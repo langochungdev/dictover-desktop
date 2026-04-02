@@ -244,6 +244,12 @@ function SettingsWindow() {
 
   useEffect(() => {
     const onKeydown = (event: KeyboardEvent) => {
+      if (event.key === 'F7') {
+        event.preventDefault()
+        event.stopPropagation()
+        return
+      }
+
       if (event.key === 'Escape') {
         void invoke('hide_settings_window').catch(() => undefined)
       }
@@ -776,6 +782,15 @@ function PopoverWindow() {
     }
 
     const onKeydown = (event: KeyboardEvent) => {
+      if (event.key === 'F7') {
+        event.preventDefault()
+        event.stopPropagation()
+        if (!hasTauriBridge && DEBUG_TRACE_ENABLED) {
+          clearTraceLogs('local-f7')
+        }
+        return
+      }
+
       if (event.key === 'Escape') {
         closePopover('escape')
         return
@@ -786,12 +801,6 @@ function PopoverWindow() {
       }
 
       if (!DEBUG_TRACE_ENABLED) {
-        return
-      }
-
-      if (event.key === 'F7') {
-        event.preventDefault()
-        clearTraceLogs('local-f7')
         return
       }
 
@@ -899,6 +908,7 @@ function PopoverWindow() {
         panelMode={settings.popover_open_panel_mode}
         enableAudio={settings.enable_audio}
         autoPlayAudioMode={settings.auto_play_audio_mode}
+        outputLanguage={settings.target_language}
         selectionAnchor={selectionAnchor}
         onOpenSettings={openSettingsWindow}
         onRequestClose={closePopover}
@@ -1046,6 +1056,7 @@ function PreviewWindow() {
                   panelMode={panelMode}
                   enableAudio={settings.enable_audio}
                   autoPlayAudioMode={settings.auto_play_audio_mode}
+                  outputLanguage={settings.target_language}
                   selectionAnchor={previewAnchor}
                 />
               </main>

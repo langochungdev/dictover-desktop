@@ -150,9 +150,6 @@ export function usePopover(settings: AppSettings) {
         close();
         return;
       }
-      if (settings.popover_trigger_mode === "shortcut" && trigger === "auto") {
-        return;
-      }
 
       const requestId = activeRequestIdRef.current + 1;
       activeRequestIdRef.current = requestId;

@@ -64,6 +64,11 @@ body.apl-preview-body {
     gap: 1rem;
 }
 
+.apl-settings-shell,
+.apl-popover-shell {
+    caret-color: transparent;
+}
+
 .apl-settings-shell {
     width: min(920px, calc(100vw - 12px));
     height: auto;
