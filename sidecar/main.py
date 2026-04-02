@@ -2,6 +2,9 @@ from __future__ import annotations
 
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel, Field, field_validator
+import os
+
+import uvicorn
 
 try:
     from .image import search_images
@@ -129,3 +132,9 @@ async def ocr_endpoint(req: OcrRequest) -> dict[str, str]:
         return {"text": run_ocr(req.image_base64, req.source, req.target)}
     except Exception as exc:
         raise HTTPException(status_code=500, detail=str(exc)) from exc
+
+
+if __name__ == "__main__":
+    host = os.getenv("SIDECAR_HOST", "127.0.0.1")
+    port = int(os.getenv("SIDECAR_PORT", "49152"))
+    uvicorn.run(app, host=host, port=port, log_level="warning")

@@ -7,15 +7,16 @@ mod hotkey;
 mod indicator;
 mod ocr;
 mod selection;
+mod sidecar_runtime;
 
 use reqwest::Client;
 use tauri::menu::{Menu, MenuItem};
 use tauri::tray::{MouseButton, TrayIconBuilder, TrayIconEvent};
-use tauri::Manager;
+use tauri::{Manager, RunEvent};
 use tauri_plugin_global_shortcut::{Builder as GlobalShortcutBuilder, ShortcutState};
 
 fn main() {
-    tauri::Builder::default()
+    let app = tauri::Builder::default()
         .plugin(
             GlobalShortcutBuilder::new()
                 .with_handler(|app, _shortcut, event| {
@@ -32,6 +33,8 @@ fn main() {
         .setup(|app| {
             let app_handle = app.handle().clone();
             let loaded = config::load_config_from_disk(&app_handle);
+            let sidecar_process = sidecar_runtime::start_release_sidecar(&app_handle)?;
+            sidecar_runtime::set_tracked_sidecar(sidecar_process);
             let state = bridge::AppState {
                 config: std::sync::Mutex::new(loaded.clone()),
                 client: Client::new(),
@@ -90,6 +93,12 @@ fn main() {
             bridge::copy_text_to_clipboard,
             bridge::resize_popover
         ])
-        .run(tauri::generate_context!())
-        .expect("error while running DictOver Desktop");
+        .build(tauri::generate_context!())
+        .expect("error while building DictOver Desktop");
+
+    app.run(|_, event| {
+        if let RunEvent::Exit = event {
+            sidecar_runtime::stop_tracked_sidecar();
+        }
+    });
 }
