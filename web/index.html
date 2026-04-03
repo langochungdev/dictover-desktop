@@ -135,7 +135,7 @@
 
         <!-- Navigation: All White -->
         <div class="flex items-center space-x-6 text-xs font-semibold text-white">
-            <a href="https://github.com/langochungdev/dictover-desktop/releases/download/v0.2.0/DictOver-0.2.0.zip" download class="flex items-center space-x-2 hover:opacity-70 transition-all">
+            <a id="downloadLink" href="https://github.com/langochungdev/dictover-desktop/releases/latest" target="_blank" rel="noopener noreferrer" class="flex items-center space-x-2 hover:opacity-70 transition-all">
                 <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path>
                 </svg>
@@ -350,6 +350,84 @@
     </div>
 
     <script>
+        const RELEASES_API = 'https://api.github.com/repos/langochungdev/dictover-desktop/releases?per_page=6';
+        const RELEASE_BASE = 'https://github.com/langochungdev/dictover-desktop/releases';
+
+        function parseVersion(value) {
+            if (typeof value !== 'string') {
+                return '';
+            }
+            const normalized = value.trim();
+            return /^\d+\.\d+\.\d+$/.test(normalized) ? normalized : '';
+        }
+
+        async function applyVersionFallback(link) {
+            try {
+                const response = await fetch('./version.json', { cache: 'no-store' });
+                if (!response.ok) {
+                    link.href = `${RELEASE_BASE}/latest`;
+                    return;
+                }
+
+                const payload = await response.json();
+                const version = parseVersion(payload?.version);
+                if (!version) {
+                    link.href = `${RELEASE_BASE}/latest`;
+                    return;
+                }
+
+                link.href = `${RELEASE_BASE}/download/v${version}/DictOver-${version}.zip`;
+            } catch {
+                link.href = `${RELEASE_BASE}/latest`;
+            }
+        }
+
+        async function resolveLatestDownloadLink() {
+            const link = document.getElementById('downloadLink');
+            if (!link) {
+                return;
+            }
+
+            await applyVersionFallback(link);
+
+            try {
+                const response = await fetch(RELEASES_API, {
+                    headers: { Accept: 'application/vnd.github+json' }
+                });
+                if (!response.ok) {
+                    return;
+                }
+
+                const releases = await response.json();
+                if (!Array.isArray(releases)) {
+                    return;
+                }
+
+                const latest = releases.find((release) => Array.isArray(release?.assets) && release.assets.length > 0);
+                if (!latest) {
+                    return;
+                }
+
+                const zipAsset = latest.assets.find((asset) => {
+                    const name = typeof asset?.name === 'string' ? asset.name : '';
+                    return /^DictOver-.*\.zip$/i.test(name);
+                });
+
+                if (zipAsset && typeof zipAsset.browser_download_url === 'string' && zipAsset.browser_download_url) {
+                    link.href = zipAsset.browser_download_url;
+                    return;
+                }
+
+                if (typeof latest.html_url === 'string' && latest.html_url) {
+                    link.href = latest.html_url;
+                }
+            } catch {
+                return;
+            }
+        }
+
+        void resolveLatestDownloadLink();
+
         const modal = document.getElementById('videoModal');
         const title = document.getElementById('videoTitle');
         const body = document.getElementById('modalBody');

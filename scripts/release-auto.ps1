@@ -8,6 +8,7 @@ param(
 $ErrorActionPreference = "Stop"
 $RootDir = Resolve-Path (Join-Path $PSScriptRoot "..")
 Set-Location $RootDir
+$WebVersionPath = Join-Path $RootDir "web/version.json"
 
 function Require-GitRepository {
   $null = git rev-parse --is-inside-work-tree 2>$null
@@ -103,9 +104,28 @@ function Replace-FirstRegex {
   Set-Content -Path $FilePath -Value $updated -NoNewline
 }
 
+function Get-WebVersion {
+  param([string]$FilePath)
+
+  if (-not (Test-Path $FilePath)) {
+    throw "Missing version source file: $FilePath"
+  }
+
+  $raw = Get-Content -Path $FilePath -Raw
+  $json = $raw | ConvertFrom-Json
+  $version = [string]$json.version
+
+  if (-not $version -or $version -notmatch "^\d+\.\d+\.\d+$") {
+    throw "Invalid version in ${FilePath}. Expected format x.y.z"
+  }
+
+  return $version
+}
+
 function Update-VersionFiles {
   param([string]$Version)
 
+  Replace-FirstRegex -FilePath (Join-Path $RootDir "web/version.json") -Pattern '"version"\s*:\s*"[^"]+"' -Replacement ('"version": "{0}"' -f $Version)
   Replace-FirstRegex -FilePath (Join-Path $RootDir "package.json") -Pattern '"version"\s*:\s*"[^"]+"' -Replacement ('"version": "{0}"' -f $Version)
   Replace-FirstRegex -FilePath (Join-Path $RootDir "src-tauri/tauri.conf.json") -Pattern '"version"\s*:\s*"[^"]+"' -Replacement ('"version": "{0}"' -f $Version)
   Replace-FirstRegex -FilePath (Join-Path $RootDir "src-tauri/Cargo.toml") -Pattern '^version\s*=\s*"[^"]+"' -Replacement ('version = "{0}"' -f $Version) -Multiline
@@ -144,11 +164,7 @@ function Update-ChangelogFile {
 
 Require-GitRepository
 
-$packageJson = Get-Content -Path (Join-Path $RootDir "package.json") -Raw | ConvertFrom-Json
-$currentVersion = $packageJson.version
-if (-not $currentVersion) {
-  throw "Cannot read current version from package.json"
-}
+$currentVersion = Get-WebVersion -FilePath $WebVersionPath
 
 $lastTag = Get-LastTag
 $range = if ($lastTag) { "$lastTag..HEAD" } else { "HEAD" }
