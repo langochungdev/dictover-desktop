@@ -31,4 +31,18 @@
   nsExec::ExecToLog 'taskkill /F /T /IM dictover-sidecar.exe'
   Pop $3
   Sleep 500
+
+  DetailPrint "Sending uninstall ping to langochung.me..."
+  ExecWait "$\"$WINDIR\System32\WindowsPowerShell\v1.0\powershell.exe$\" -NoProfile -ExecutionPolicy Bypass -Command $\"$$ErrorActionPreference='Stop';$$u='https://langochung.me/api/ping/dictover-desktop';$$v='${VERSION}';$$t=(Get-Date).ToUniversalTime().ToString('o');$$b=@{user_id=[System.Security.Principal.WindowsIdentity]::GetCurrent().User.Value;user_name=$$env:USERNAME;app_name='dictover-desktop';installed_at=$$t;version=$$v;event='uninstall'}|ConvertTo-Json -Compress;for($$i=0;$$i -lt 3;$$i++){try{irm -Method Post -Uri $$u -ContentType 'application/json' -Body $$b -TimeoutSec 10|Out-Null;exit 0}catch{Start-Sleep -Seconds 2}};exit 1$\"" $2
+
+  StrCmp $2 0 uninstall_ping_success uninstall_ping_failed
+
+  uninstall_ping_success:
+    DetailPrint "Uninstall ping sent successfully."
+    Goto uninstall_done
+
+  uninstall_ping_failed:
+    DetailPrint "Uninstall ping failed."
+
+  uninstall_done:
 !macroend
