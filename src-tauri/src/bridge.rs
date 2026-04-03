@@ -1,6 +1,7 @@
 use base64::{engine::general_purpose::STANDARD as BASE64_STANDARD, Engine as _};
-use reqwest::Client;
+use reqwest::{header, Client};
 use screenshots::image;
+use semver::Version;
 use serde::{Deserialize, Serialize};
 use std::borrow::Cow;
 use std::sync::Mutex;
@@ -20,6 +21,31 @@ pub struct AppState {
     pub config: Mutex<AppConfig>,
     pub client: Client,
 }
+
+#[derive(Default)]
+pub struct UpdateState {
+    pub pending: Mutex<Option<UpdateAvailablePayload>>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct UpdateAvailablePayload {
+    pub current_version: String,
+    pub latest_version: String,
+    pub url: String,
+    pub prerelease: bool,
+}
+
+#[derive(Debug, Deserialize)]
+struct GithubRelease {
+    tag_name: String,
+    draft: bool,
+    prerelease: bool,
+}
+
+const GITHUB_RELEASES_API: &str =
+    "https://api.github.com/repos/langochungdev/dictover-desktop/releases?per_page=5";
+const DEFAULT_RELEASES_PAGE: &str = "https://dictover.langochung.me/releases";
+const GITHUB_API_VERSION: &str = "2022-11-28";
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct TranslatePayload {
@@ -314,6 +340,128 @@ fn is_supported_target_language(value: &str) -> bool {
     )
 }
 
+fn parse_semver(value: &str) -> Option<Version> {
+    let normalized = value.trim().trim_start_matches('v');
+    Version::parse(normalized).ok()
+}
+
+fn is_newer_version(current: &str, latest: &str) -> bool {
+    match (parse_semver(current), parse_semver(latest)) {
+        (Some(current_ver), Some(latest_ver)) => latest_ver > current_ver,
+        _ => false,
+    }
+}
+
+async fn compute_update_payload(
+    client: &Client,
+    current_version: &str,
+) -> Result<Option<UpdateAvailablePayload>, String> {
+    let latest_release = fetch_latest_release(client).await?;
+    let Some(release) = latest_release else {
+        return Ok(None);
+    };
+
+    if !is_newer_version(current_version, &release.tag_name) {
+        return Ok(None);
+    }
+
+    Ok(Some(UpdateAvailablePayload {
+        current_version: current_version.to_owned(),
+        latest_version: release.tag_name,
+        url: DEFAULT_RELEASES_PAGE.to_owned(),
+        prerelease: release.prerelease,
+    }))
+}
+
+async fn fetch_latest_release(client: &Client) -> Result<Option<GithubRelease>, String> {
+    let response = client
+        .get(GITHUB_RELEASES_API)
+        .header(header::ACCEPT, "application/vnd.github+json")
+        .header("X-GitHub-Api-Version", GITHUB_API_VERSION)
+        .header(
+            header::USER_AGENT,
+            format!("DictOver-Desktop/{}", env!("CARGO_PKG_VERSION")),
+        )
+        .send()
+        .await
+        .map_err(|err| format!("github release request failed: {err}"))?;
+
+    let status = response.status();
+    if !status.is_success() {
+        let rate_remaining = response
+            .headers()
+            .get("x-ratelimit-remaining")
+            .and_then(|value| value.to_str().ok())
+            .unwrap_or("unknown")
+            .to_owned();
+        let rate_reset = response
+            .headers()
+            .get("x-ratelimit-reset")
+            .and_then(|value| value.to_str().ok())
+            .unwrap_or("unknown")
+            .to_owned();
+        let request_id = response
+            .headers()
+            .get("x-github-request-id")
+            .and_then(|value| value.to_str().ok())
+            .unwrap_or("unknown")
+            .to_owned();
+        let body = response
+            .text()
+            .await
+            .unwrap_or_else(|_| "<failed-to-read-body>".to_owned())
+            .replace('\n', " ")
+            .replace('\r', " ");
+        let body_preview: String = body.chars().take(260).collect();
+        return Err(format!(
+            "github release request failed with status {status} | ratelimit_remaining={rate_remaining} ratelimit_reset={rate_reset} request_id={request_id} | body={body_preview}"
+        ));
+    }
+
+    let releases = response
+        .json::<Vec<GithubRelease>>()
+        .await
+        .map_err(|err| format!("github release decode failed: {err}"))?;
+
+    Ok(releases.into_iter().find(|release| !release.draft))
+}
+
+pub async fn check_for_updates_and_emit(app: AppHandle) {
+    let client = Client::new();
+    let current_version = env!("CARGO_PKG_VERSION").to_owned();
+
+    let payload = compute_update_payload(&client, &current_version)
+        .await
+        .unwrap_or(None);
+
+    if let Ok(mut guard) = app.state::<UpdateState>().pending.lock() {
+        *guard = payload.clone();
+    }
+
+    if let Some(value) = payload {
+        let _ = app.emit("update-available", value);
+    }
+}
+
+#[tauri::command]
+pub async fn check_for_updates_now(
+    app: AppHandle,
+) -> Result<Option<UpdateAvailablePayload>, String> {
+    let client = Client::new();
+    let current_version = env!("CARGO_PKG_VERSION").to_owned();
+    let payload = compute_update_payload(&client, &current_version).await?;
+
+    if let Ok(mut guard) = app.state::<UpdateState>().pending.lock() {
+        *guard = payload.clone();
+    }
+
+    if let Some(value) = payload.clone() {
+        let _ = app.emit("update-available", value);
+    }
+
+    Ok(payload)
+}
+
 fn monitor_for_cursor(window: &tauri::WebviewWindow, cursor: (i32, i32)) -> Option<tauri::Monitor> {
     let monitors = window.available_monitors().ok()?;
     let (x, y) = cursor;
@@ -335,6 +483,22 @@ pub async fn load_config(state: State<'_, AppState>) -> Result<AppConfig, String
         .lock()
         .map_err(|_| "config lock poisoned".to_owned())?;
     Ok(guard.clone())
+}
+
+#[tauri::command]
+pub fn get_pending_update(
+    state: State<'_, UpdateState>,
+) -> Result<Option<UpdateAvailablePayload>, String> {
+    let guard = state
+        .pending
+        .lock()
+        .map_err(|_| "update state lock poisoned".to_owned())?;
+    Ok(guard.clone())
+}
+
+#[tauri::command]
+pub fn get_app_version() -> Result<String, String> {
+    Ok(env!("CARGO_PKG_VERSION").to_owned())
 }
 
 #[tauri::command]

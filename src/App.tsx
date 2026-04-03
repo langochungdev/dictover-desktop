@@ -44,6 +44,13 @@ interface HotkeyTracePayload {
   detail?: string
 }
 
+interface UpdateAvailablePayload {
+  current_version: string
+  latest_version: string
+  url: string
+  prerelease: boolean
+}
+
 type SettingsStatus =
   | 'ready'
   | 'usingDefaults'
@@ -64,7 +71,15 @@ const IS_HOTKEY_INDICATOR_WINDOW = WINDOW_MODE === 'hotkey-indicator'
 const IS_OCR_OVERLAY_WINDOW = WINDOW_MODE === 'ocr-overlay'
 const IS_DEBUG_LOG_WINDOW = WINDOW_MODE === 'debug-log'
 const IS_PREVIEW_WINDOW = WINDOW_MODE === 'preview' || PREVIEW_MODE
+const IS_SETTINGS_WINDOW = !IS_POPOVER_WINDOW && !IS_HOTKEY_INDICATOR_WINDOW && !IS_OCR_OVERLAY_WINDOW && !IS_DEBUG_LOG_WINDOW && !IS_PREVIEW_WINDOW
 const DEBUG_TRACE_ENABLED = isDebugTraceEnabled()
+const DEFAULT_RELEASES_PAGE = 'https://dictover.langochung.me/releases'
+let updateCheckBootstrapped = false
+
+if (typeof window !== 'undefined' && IS_SETTINGS_WINDOW) {
+  clearDebugLogs()
+  appendDebugLog('trace', 'Trace logs reset', 'app-bootstrap')
+}
 
 const MOCK_DICTIONARY: DictionaryResult = {
   word: 'mindset',
@@ -158,16 +173,63 @@ function changedSettingKeys(previous: AppSettings, next: AppSettings): string[] 
   return keys.filter((key) => previous[key] !== next[key]).map((key) => String(key))
 }
 
+function describeCause(cause: unknown): string {
+  if (cause instanceof Error) {
+    return cause.message
+  }
+  if (typeof cause === 'string') {
+    return cause
+  }
+  try {
+    return JSON.stringify(cause)
+  } catch {
+    return String(cause)
+  }
+}
+
 function SettingsWindow() {
   const [settings, setSettings] = useState<AppSettings>(DEFAULT_SETTINGS)
   const [status, setStatus] = useState<SettingsStatus>('ready')
-  const [loadingSettings, setLoadingSettings] = useState(true)
+  const [updateAvailable, setUpdateAvailable] = useState<UpdateAvailablePayload | null>(null)
+  const [dismissedUpdateVersion, setDismissedUpdateVersion] = useState('')
+  const lastAppliedUpdateKeyRef = useRef('')
   const settingsRef = useRef<AppSettings>(DEFAULT_SETTINGS)
   const saveSequenceRef = useRef(0)
   const shellRef = useRef<HTMLElement | null>(null)
   const lastSyncedWindowHeightRef = useRef(0)
   const copy = getSettingsCopy(settings.target_language)
   const hasTauriBridge = typeof window !== 'undefined' && '__TAURI_INTERNALS__' in window
+
+  const shouldShowUpdate = useCallback((payload: UpdateAvailablePayload): boolean => {
+    return payload.latest_version.trim() !== dismissedUpdateVersion.trim()
+  }, [dismissedUpdateVersion])
+
+  const applyIncomingUpdate = useCallback((payload: UpdateAvailablePayload | null, source: string) => {
+    if (!payload) {
+      appendDebugLog('update', 'No update payload', source)
+      return
+    }
+
+    const payloadKey = `${payload.current_version}::${payload.latest_version}::${payload.prerelease ? '1' : '0'}`
+    if (payloadKey === lastAppliedUpdateKeyRef.current) {
+      appendDebugLog('update', 'Duplicate update payload ignored', `${source} | latest=${payload.latest_version}`)
+      return
+    }
+    lastAppliedUpdateKeyRef.current = payloadKey
+
+    appendDebugLog(
+      'update',
+      'Update payload received',
+      `${source} | current=${payload.current_version} latest=${payload.latest_version} prerelease=${payload.prerelease ? '1' : '0'}`,
+    )
+    if (shouldShowUpdate(payload)) {
+      setUpdateAvailable(payload)
+      appendDebugLog('update', 'Update modal shown', `${source} | latest=${payload.latest_version}`)
+      return
+    }
+    appendDebugLog('update', 'Update modal suppressed', `${source} | dismissed=${dismissedUpdateVersion || 'none'}`)
+  }, [dismissedUpdateVersion, shouldShowUpdate])
+
   const closeSettingsWindow = useCallback(() => {
     if (!hasTauriBridge) {
       return
@@ -198,10 +260,6 @@ function SettingsWindow() {
           setSettings(DEFAULT_SETTINGS)
           setStatus('usingDefaults')
           appendDebugLog('settings', 'Load settings failed, using defaults')
-        }
-      } finally {
-        if (mounted) {
-          setLoadingSettings(false)
         }
       }
     }
@@ -247,6 +305,88 @@ function SettingsWindow() {
       cleanupSettingsUpdated?.()
     }
   }, [])
+
+  useEffect(() => {
+    if (updateCheckBootstrapped) {
+      appendDebugLog('update', 'Setup update check skipped', 'already-bootstrapped')
+      return
+    }
+    updateCheckBootstrapped = true
+
+    appendDebugLog('update', 'Setup update check', `settings-window-mounted | bridge=${hasTauriBridge ? '1' : '0'}`)
+    if (!hasTauriBridge) {
+      appendDebugLog('update', 'Setup update check skipped', 'no-tauri-bridge')
+      return
+    }
+
+    let cleanupUpdate: (() => void) | null = null
+    const setupUpdate = async () => {
+      appendDebugLog('update', 'Update check attempt', 'attempt=1')
+
+      try {
+        const unlisten = await listen<UpdateAvailablePayload>('update-available', (event) => {
+          applyIncomingUpdate(event.payload, 'event:update-available')
+        })
+        cleanupUpdate = unlisten
+        appendDebugLog('update', 'Update event listener ready', 'event:update-available')
+      } catch (cause) {
+        cleanupUpdate = null
+        appendDebugLog('update', 'Update event listener failed', describeCause(cause))
+      }
+
+      try {
+        const fresh = await invoke<UpdateAvailablePayload | null>('check_for_updates_now')
+        if (fresh) {
+          applyIncomingUpdate(fresh, 'invoke:check_for_updates_now')
+          return
+        }
+        appendDebugLog('update', 'No fresh update', 'invoke:check_for_updates_now')
+      } catch (cause) {
+        appendDebugLog('update', 'Fresh update check failed', describeCause(cause))
+      }
+
+      try {
+        const pending = await invoke<UpdateAvailablePayload | null>('get_pending_update')
+        if (pending) {
+          applyIncomingUpdate(pending, 'invoke:get_pending_update')
+          return
+        }
+        appendDebugLog('update', 'No update payload', 'invoke:get_pending_update')
+      } catch (cause) {
+        appendDebugLog('update', 'Pending update read failed', describeCause(cause))
+      }
+    }
+
+    void setupUpdate()
+    return () => {
+      cleanupUpdate?.()
+    }
+  }, [applyIncomingUpdate, hasTauriBridge])
+
+  useEffect(() => {
+    if (!updateAvailable) {
+      appendDebugLog('update', 'Update state', 'hidden')
+      return
+    }
+    appendDebugLog('update', 'Update state', `visible | latest=${updateAvailable.latest_version}`)
+  }, [updateAvailable])
+
+  const dismissUpdateBanner = useCallback(() => {
+    if (updateAvailable?.latest_version) {
+      setDismissedUpdateVersion(updateAvailable.latest_version)
+      appendDebugLog('update', 'Update modal dismissed by user', `latest=${updateAvailable.latest_version}`)
+    }
+    setUpdateAvailable(null)
+  }, [updateAvailable?.latest_version])
+
+  const openUpdatePage = useCallback(() => {
+    const url = updateAvailable?.url?.trim() || DEFAULT_RELEASES_PAGE
+    if (!hasTauriBridge) {
+      window.open(url, '_blank', 'noopener,noreferrer')
+      return
+    }
+    void invoke('open_external_url', { url }).catch(() => undefined)
+  }, [hasTauriBridge, updateAvailable?.url])
 
   useEffect(() => {
     const onKeydown = (event: KeyboardEvent) => {
@@ -324,7 +464,7 @@ function SettingsWindow() {
   }, [hasTauriBridge])
 
   useEffect(() => {
-    if (loadingSettings || !hasTauriBridge) {
+    if (!hasTauriBridge) {
       return
     }
 
@@ -388,7 +528,7 @@ function SettingsWindow() {
       observer.disconnect()
       window.removeEventListener('resize', scheduleSync)
     }
-  }, [hasTauriBridge, loadingSettings, syncSettingsWindowSize])
+  }, [hasTauriBridge, syncSettingsWindowSize])
 
   const handleSettingsChange = useCallback((next: AppSettings) => {
     const previous = settingsRef.current
@@ -451,10 +591,6 @@ function SettingsWindow() {
     return copy.saveFailed
   }, [copy, status])
 
-  if (loadingSettings) {
-    return null
-  }
-
   return (
     <main ref={shellRef} className={`apl-settings-shell ${status === 'saving' ? 'is-saving' : ''}`}>
       <div className="apl-settings-toolbar-clean">
@@ -466,6 +602,33 @@ function SettingsWindow() {
           {copy.resetDefaults}
         </button>
       </div>
+
+      {updateAvailable && (
+        <section
+          className="apl-update-banner apl-update-banner--floating"
+          role="status"
+          aria-live="polite"
+          aria-labelledby="apl-update-title"
+        >
+          <div className="apl-update-banner-main">
+            <h2 id="apl-update-title">Có bản cập nhật mới: {updateAvailable.latest_version}</h2>
+            <p>Bạn đang dùng {updateAvailable.current_version}</p>
+          </div>
+          <div className="apl-update-banner-actions">
+            <button type="button" className="apl-update-action" onClick={openUpdatePage}>
+              Cập nhật ngay
+            </button>
+            <button
+              type="button"
+              className="apl-update-banner-close"
+              onClick={dismissUpdateBanner}
+              aria-label="Đóng thông báo cập nhật"
+            >
+              ×
+            </button>
+          </div>
+        </section>
+      )}
 
       <SettingsPanel
         open
@@ -1106,8 +1269,48 @@ function PreviewWindow() {
 
 export function App() {
   useEffect(() => {
-    const isSettings = !IS_POPOVER_WINDOW && !IS_HOTKEY_INDICATOR_WINDOW && !IS_OCR_OVERLAY_WINDOW && !IS_DEBUG_LOG_WINDOW && !IS_PREVIEW_WINDOW
-    document.body.classList.toggle('apl-settings-body', isSettings)
+    const suppressCaretBrowsingHotkey = (event: KeyboardEvent) => {
+      if (event.key !== 'F7') {
+        return
+      }
+      event.preventDefault()
+      event.stopPropagation()
+      event.stopImmediatePropagation()
+    }
+
+    document.addEventListener('keydown', suppressCaretBrowsingHotkey, true)
+    document.addEventListener('keyup', suppressCaretBrowsingHotkey, true)
+    document.addEventListener('keypress', suppressCaretBrowsingHotkey, true)
+    window.addEventListener('keydown', suppressCaretBrowsingHotkey, true)
+    window.addEventListener('keyup', suppressCaretBrowsingHotkey, true)
+    window.addEventListener('keypress', suppressCaretBrowsingHotkey, true)
+    return () => {
+      document.removeEventListener('keydown', suppressCaretBrowsingHotkey, true)
+      document.removeEventListener('keyup', suppressCaretBrowsingHotkey, true)
+      document.removeEventListener('keypress', suppressCaretBrowsingHotkey, true)
+      window.removeEventListener('keydown', suppressCaretBrowsingHotkey, true)
+      window.removeEventListener('keyup', suppressCaretBrowsingHotkey, true)
+      window.removeEventListener('keypress', suppressCaretBrowsingHotkey, true)
+    }
+  }, [])
+
+  useEffect(() => {
+    if (!IS_SETTINGS_WINDOW) {
+      return
+    }
+
+    const onBeforeUnload = () => {
+      clearDebugLogs()
+    }
+
+    window.addEventListener('beforeunload', onBeforeUnload)
+    return () => {
+      window.removeEventListener('beforeunload', onBeforeUnload)
+    }
+  }, [])
+
+  useEffect(() => {
+    document.body.classList.toggle('apl-settings-body', IS_SETTINGS_WINDOW)
     document.body.classList.toggle('apl-popover-body', IS_POPOVER_WINDOW)
     document.body.classList.toggle('apl-hotkey-indicator-body', IS_HOTKEY_INDICATOR_WINDOW)
     document.body.classList.toggle('apl-ocr-overlay-body', IS_OCR_OVERLAY_WINDOW)

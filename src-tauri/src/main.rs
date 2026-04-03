@@ -41,9 +41,15 @@ fn main() {
                 client: Client::new(),
             };
             app.manage(state);
+            app.manage(bridge::UpdateState::default());
             hotkey::register_hotkeys(&app_handle, &loaded)?;
             selection::install_popover_window_guards(&app_handle);
             selection::start_selection_listener(app_handle.clone());
+
+            let app_for_update = app_handle.clone();
+            tauri::async_runtime::spawn(async move {
+                bridge::check_for_updates_and_emit(app_for_update).await;
+            });
 
             let quit_i = MenuItem::with_id(&app_handle, "quit", "Quit", true, None::<&str>)?;
             let settings_i =
@@ -75,6 +81,9 @@ fn main() {
         })
         .invoke_handler(tauri::generate_handler![
             bridge::load_config,
+            bridge::get_pending_update,
+            bridge::get_app_version,
+            bridge::check_for_updates_now,
             bridge::save_config,
             bridge::translate_text,
             bridge::lookup_dictionary,
