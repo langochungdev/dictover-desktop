@@ -7,3 +7,4 @@ easyocr
 Pillow
 opencv-python
 numpy
+opencc-python-reimplemented

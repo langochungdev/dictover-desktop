@@ -10,6 +10,11 @@ try:
 except Exception:
     detect = None
 
+try:
+    from opencc import OpenCC
+except Exception:
+    OpenCC = None
+
 
 HTTP_TIMEOUT = 12
 SESSION = requests.Session()
@@ -21,10 +26,25 @@ SESSION.headers.update(
 )
 
 LANG_ALIAS = {"zh-CN": "zh", "zh": "zh"}
+T2S_CONVERTER = OpenCC("t2s") if OpenCC is not None else None
 
 
 def normalize_lang(lang: str) -> str:
     return LANG_ALIAS.get(lang, lang)
+
+
+def normalize_chinese_script(text: str, target: str) -> str:
+    if not text or not target:
+        return text
+    normalized_target = target.strip().lower().replace("_", "-")
+    if not normalized_target.startswith("zh"):
+        return text
+    if T2S_CONVERTER is None:
+        return text
+    try:
+        return T2S_CONVERTER.convert(text)
+    except Exception:
+        return text
 
 
 @dataclass
@@ -109,6 +129,11 @@ def translate(text: str, source: str, target: str) -> TranslationResult:
     src = detect_language(text) if source == "auto" else source
     tgt = target or "en"
     try:
-        return ARGOS.translate(text, src, tgt)
+        result = ARGOS.translate(text, src, tgt)
     except Exception:
-        return fallback_translate_api(text, src, tgt)
+        result = fallback_translate_api(text, src, tgt)
+
+    normalized_result = normalize_chinese_script(result.result, tgt)
+    if normalized_result == result.result:
+        return result
+    return TranslationResult(normalized_result, result.engine, f"{result.mode}+t2s")
