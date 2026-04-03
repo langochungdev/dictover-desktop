@@ -48,6 +48,10 @@ interface OcrOverlayResultPayload {
   image_overlay_changed?: boolean
 }
 
+interface OcrOverlayBackgroundPayload {
+  image_base64?: string
+}
+
 interface OverlayResultState {
   imageBase64: string
   text: string
@@ -100,6 +104,7 @@ export function OcrOverlayWindow() {
   const [ocrTargetLanguage, setOcrTargetLanguage] = useState<OutputLanguageCode>('en')
   const [result, setResult] = useState<OverlayResultState | null>(null)
   const [copyStatus, setCopyStatus] = useState<CopyStatus>('idle')
+  const [backgroundImageBase64, setBackgroundImageBase64] = useState('')
   const copyStatusTimerRef = useRef<number | null>(null)
   const hasTauriBridge = typeof window !== 'undefined' && '__TAURI_INTERNALS__' in window
   const copy = useMemo(() => getSettingsCopy(ocrTargetLanguage), [ocrTargetLanguage])
@@ -110,6 +115,7 @@ export function OcrOverlayWindow() {
     let cleanupReset: (() => void) | null = null
     let cleanupProcessing: (() => void) | null = null
     let cleanupResult: (() => void) | null = null
+    let cleanupBackground: (() => void) | null = null
 
     void (async () => {
       try {
@@ -160,6 +166,7 @@ export function OcrOverlayWindow() {
           setCurrent(null)
           setResult(null)
           setCopyStatus('idle')
+          setBackgroundImageBase64('')
           setMode('select')
         })
         cleanupReset = unlisten
@@ -180,6 +187,29 @@ export function OcrOverlayWindow() {
         cleanupProcessing = unlisten
       } catch {
         cleanupProcessing = null
+      }
+    })()
+
+    void (async () => {
+      try {
+        const unlisten = await listen<OcrOverlayBackgroundPayload>('ocr-overlay-background', (event) => {
+          if (!mounted) {
+            return
+          }
+
+          const imageBase64 = typeof event.payload?.image_base64 === 'string'
+            ? event.payload.image_base64.trim()
+            : ''
+
+          if (!imageBase64) {
+            return
+          }
+
+          setBackgroundImageBase64(imageBase64)
+        })
+        cleanupBackground = unlisten
+      } catch {
+        cleanupBackground = null
       }
     })()
 
@@ -244,6 +274,7 @@ export function OcrOverlayWindow() {
       cleanupSettingsUpdated?.()
       cleanupReset?.()
       cleanupProcessing?.()
+      cleanupBackground?.()
       cleanupResult?.()
     }
   }, [])
@@ -367,15 +398,18 @@ export function OcrOverlayWindow() {
 
     const viewportWidth = typeof window !== 'undefined' ? window.innerWidth : result.width
     const viewportHeight = typeof window !== 'undefined' ? window.innerHeight : result.height
+    const minToolbarWidth = Math.max(8, Math.min(360, viewportWidth - 12))
     const frameWidth = Math.max(8, Math.min(result.width, viewportWidth - 12))
+    const panelWidth = Math.max(frameWidth, minToolbarWidth)
     const frameHeight = Math.max(8, Math.min(result.height, viewportHeight - 56))
-    const left = Math.max(6, Math.min(result.left, viewportWidth - frameWidth - 6))
+    const left = Math.max(6, Math.min(result.left, viewportWidth - panelWidth - 6))
     const maxTop = Math.max(6, viewportHeight - frameHeight - 52)
     const top = Math.max(6, Math.min(result.top, maxTop))
 
     return {
       left,
       top,
+      panelWidth,
       frameWidth,
       frameHeight,
     }
@@ -462,6 +496,15 @@ export function OcrOverlayWindow() {
       onPointerUp={handlePointerUp}
       onContextMenu={handleContextMenu}
     >
+      {backgroundImageBase64 && (
+        <img
+          src={`data:image/png;base64,${backgroundImageBase64}`}
+          alt="OCR capture background"
+          className="apl-ocr-overlay-bg"
+          draggable={false}
+        />
+      )}
+
       {mode === 'select' && <div className="apl-ocr-overlay-hint">{hintText}</div>}
       {mode === 'select' && selection && (
         <div
@@ -487,13 +530,19 @@ export function OcrOverlayWindow() {
           style={{
             left: `${resultLayout.left}px`,
             top: `${resultLayout.top}px`,
-            width: `${resultLayout.frameWidth}px`,
+            width: `${resultLayout.panelWidth}px`,
           }}
           role="dialog"
           aria-modal="false"
           aria-label="OCR translated image result"
         >
-          <div className="apl-ocr-result-image-wrap" style={{ height: `${resultLayout.frameHeight}px` }}>
+          <div
+            className="apl-ocr-result-image-wrap"
+            style={{
+              width: `${resultLayout.frameWidth}px`,
+              height: `${resultLayout.frameHeight}px`,
+            }}
+          >
             <img
               src={`data:image/png;base64,${result.imageBase64}`}
               alt="OCR translated result"

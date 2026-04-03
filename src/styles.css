@@ -367,7 +367,17 @@ button {
     inset: 0;
     cursor: crosshair;
     user-select: none;
-    background: rgba(7, 12, 20, 0.16);
+    background: rgba(7, 12, 20, 0.06);
+}
+
+.apl-ocr-overlay-bg {
+    position: fixed;
+    inset: 0;
+    width: 100vw;
+    height: 100vh;
+    object-fit: fill;
+    pointer-events: none;
+    user-select: none;
 }
 
 .apl-ocr-overlay-shell.is-processing {
@@ -442,11 +452,15 @@ button {
 .apl-ocr-result-toolbar {
     display: flex;
     align-items: center;
+    flex-wrap: nowrap;
     gap: 8px;
     padding: 6px 8px;
     border-radius: 999px;
     background: rgba(14, 24, 40, 0.94);
     width: fit-content;
+    max-width: 100%;
+    overflow-x: auto;
+    overflow-y: hidden;
 }
 
 .apl-ocr-result-btn {
@@ -458,6 +472,8 @@ button {
     font-weight: 700;
     padding: 0.34rem 0.7rem;
     cursor: pointer;
+    white-space: nowrap;
+    flex: 0 0 auto;
 }
 
 .apl-ocr-result-btn:disabled {
@@ -750,9 +766,24 @@ button {
     position: relative;
 }
 
+.apl-translate-compact--floating-actions {
+    position: relative;
+}
+
 .apl-popover--translate-paragraph {
     padding-top: 1px;
     padding-bottom: 1px;
+}
+
+.apl-popover--translate-single-compact {
+    padding-top: 0.08rem;
+    padding-right: 0.22rem;
+    padding-bottom: 0.24rem;
+    padding-left: 0.22rem;
+}
+
+.apl-popover--translate-single-compact .apl-translate-vi {
+    margin-top: 0;
 }
 
 .apl-popover--translate-paragraph .apl-translate-compact--paragraph {
@@ -794,7 +825,7 @@ button {
     transition: opacity 150ms ease, transform 150ms ease;
 }
 
-.apl-popover--translate-paragraph .apl-translate-inline-actions--floating .apl-button {
+.apl-popover--translate-floating-actions .apl-translate-inline-actions--floating .apl-button {
     min-width: 28px;
     width: 28px;
     height: 28px;
@@ -802,9 +833,9 @@ button {
     padding: 2px;
 }
 
-.apl-popover--translate-paragraph .apl-translate-inline-actions--floating .apl-audio-icon,
-.apl-popover--translate-paragraph .apl-translate-inline-actions--floating .apl-image-icon,
-.apl-popover--translate-paragraph .apl-translate-inline-actions--floating .apl-settings-icon {
+.apl-popover--translate-floating-actions .apl-translate-inline-actions--floating .apl-audio-icon,
+.apl-popover--translate-floating-actions .apl-translate-inline-actions--floating .apl-image-icon,
+.apl-popover--translate-floating-actions .apl-translate-inline-actions--floating .apl-settings-icon {
     width: 18px;
     height: 18px;
 }
@@ -878,8 +909,8 @@ button {
 
 @media (hover: hover) {
 
-    .apl-popover--translate-paragraph:hover .apl-translate-inline-actions--floating,
-    .apl-popover--translate-paragraph:focus-within .apl-translate-inline-actions--floating {
+    .apl-popover--translate-floating-actions:hover .apl-translate-inline-actions--floating,
+    .apl-popover--translate-floating-actions:focus-within .apl-translate-inline-actions--floating {
         opacity: 1;
         pointer-events: auto;
         transform: translateY(0);
@@ -887,7 +918,7 @@ button {
 }
 
 @media (hover: none) {
-    .apl-popover--translate-paragraph .apl-translate-inline-actions--floating {
+    .apl-popover--translate-floating-actions .apl-translate-inline-actions--floating {
         opacity: 1;
         pointer-events: auto;
         transform: translateY(0);

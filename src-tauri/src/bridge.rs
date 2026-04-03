@@ -156,6 +156,11 @@ struct HotkeyTraceEvent {
     detail: String,
 }
 
+#[derive(Debug, Clone, Serialize)]
+struct OcrOverlayBackgroundPayload {
+    image_base64: String,
+}
+
 const OCR_OVERLAY_WINDOW_LABEL: &str = "ocr-overlay";
 
 fn emit_hotkey_trace(app: &AppHandle, stage: &str, shortcut: &str, detail: String) {
@@ -561,11 +566,22 @@ pub fn show_ocr_overlay(app: AppHandle) -> Result<(), String> {
         .or_else(|| overlay.current_monitor().ok().flatten())
         .or_else(|| app.primary_monitor().ok().flatten());
 
+    let mut background_snapshot_region = None;
+
     if let Some(mon) = &monitor {
         let size = mon.size();
         let _ = overlay.set_size(Size::Physical(PhysicalSize::new(size.width, size.height)));
         let pos = mon.position();
         let _ = overlay.set_position(Position::Physical(PhysicalPosition::new(pos.x, pos.y)));
+
+        let monitor_right = pos
+            .x
+            .saturating_add(i32::try_from(size.width).unwrap_or(i32::MAX));
+        let monitor_bottom = pos
+            .y
+            .saturating_add(i32::try_from(size.height).unwrap_or(i32::MAX));
+        background_snapshot_region =
+            ocr::normalize_region(pos.x, pos.y, monitor_right, monitor_bottom);
     }
 
     overlay
@@ -574,6 +590,26 @@ pub fn show_ocr_overlay(app: AppHandle) -> Result<(), String> {
     overlay
         .set_focus()
         .map_err(|err| format!("focus ocr overlay failed: {err}"))?;
+
+    if let Some(full_monitor_region) = background_snapshot_region {
+        let app_for_snapshot = app.clone();
+        tauri::async_runtime::spawn(async move {
+            let snapshot_result = tauri::async_runtime::spawn_blocking(move || {
+                ocr::capture_region_png_base64(full_monitor_region)
+            })
+            .await;
+
+            if let Ok(Ok(snapshot_base64)) = snapshot_result {
+                let _ = app_for_snapshot.emit(
+                    "ocr-overlay-background",
+                    OcrOverlayBackgroundPayload {
+                        image_base64: snapshot_base64,
+                    },
+                );
+            }
+        });
+    }
+
     Ok(())
 }
 

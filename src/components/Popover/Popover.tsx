@@ -120,6 +120,7 @@ export function Popover({ state, selection, trigger, lookupDisplayWord, lookupDi
 
   const cleanSelection = normalizeText(selection)
   const selectedText = cleanSelection || 'Selection'
+  const hasDictionaryData = Boolean(dictionary)
   const selectedWordCount = useMemo(
     () => (selectedText ? selectedText.split(/\s+/).filter(Boolean).length : 0),
     [selectedText],
@@ -128,6 +129,7 @@ export function Popover({ state, selection, trigger, lookupDisplayWord, lookupDi
   const isOcrTrigger = trigger === 'ocr'
   const copy = getSettingsCopy(outputLanguage)
   const isParagraphTranslate = state === 'translate' && selectedWordCount > 1
+  const isCompactSingleTranslate = state === 'translate' && selectedWordCount === 1 && !hasDictionaryData
   const isOcrParagraphTranslate = isOcrTrigger && isParagraphTranslate
   const isOcrLookup = isOcrTrigger && state === 'lookup'
   const ocrOverlayImageSrc = useMemo(() => {
@@ -193,16 +195,13 @@ export function Popover({ state, selection, trigger, lookupDisplayWord, lookupDi
   }, [])
 
   const capturePopoverWidth = useCallback(() => {
-    const width = Math.max(readPopoverWidth(), baselinePopoverWidth ?? 0)
+    const width = readPopoverWidth()
     if (width > 0) {
       setLockedPopoverWidth((current) => {
-        if (current === null) {
-          return width
-        }
-        return Math.max(current, width)
+        return current ?? width
       })
     }
-  }, [baselinePopoverWidth, readPopoverWidth])
+  }, [readPopoverWidth])
 
   const togglePanel = useCallback((target: PopoverOpenPanelMode) => {
     setActivePanel((current) => {
@@ -210,14 +209,14 @@ export function Popover({ state, selection, trigger, lookupDisplayWord, lookupDi
       if (next === 'none') {
         setLockedPopoverWidth(null)
       } else {
-        const width = Math.max(readPopoverWidth(), baselinePopoverWidth ?? 0)
+        const width = readPopoverWidth()
         if (width > 0) {
           setLockedPopoverWidth(width)
         }
       }
       return next
     })
-  }, [baselinePopoverWidth, readPopoverWidth])
+  }, [readPopoverWidth])
 
   const closeSubPanel = useCallback(() => {
     setActivePanel('none')
@@ -295,11 +294,17 @@ export function Popover({ state, selection, trigger, lookupDisplayWord, lookupDi
 
     const widthPadding = isParagraphTranslate
       ? Math.max(20, POPOVER_BASE_CONTENT_PADDING_PX - 52)
+      : isCompactSingleTranslate
+        ? Math.max(28, POPOVER_BASE_CONTENT_PADDING_PX - 44)
       : POPOVER_BASE_CONTENT_PADDING_PX
     const widthCharPx = isParagraphTranslate
       ? Math.max(5.2, CONTENT_CHAR_WIDTH_PX - 1.8)
       : CONTENT_CHAR_WIDTH_PX
-    const minWidth = isParagraphTranslate ? 176 : MIN_POPOVER_WIDTH
+    const minWidth = isParagraphTranslate
+      ? 176
+      : isCompactSingleTranslate
+        ? 156
+        : MIN_POPOVER_WIDTH
 
     const estimatedWidth = Math.ceil(
       widthPadding + contentDensity * widthCharPx,
@@ -312,7 +317,7 @@ export function Popover({ state, selection, trigger, lookupDisplayWord, lookupDi
       maxMinWidth,
       Math.max(minWidth, estimatedWidth),
     )
-  }, [compactLookupScore.definition, compactLookupScore.header, compactTranslateLength, isParagraphTranslate, selectedText.length, state])
+  }, [compactLookupScore.definition, compactLookupScore.header, compactTranslateLength, isCompactSingleTranslate, isParagraphTranslate, selectedText.length, state])
 
   const showDetailsPanel = state === 'lookup' && Boolean(dictionary) && activePanel === 'details'
   const showImagePanel = activePanel === 'images'
@@ -458,6 +463,13 @@ export function Popover({ state, selection, trigger, lookupDisplayWord, lookupDi
   const lookupData = dictionary ? { word: normalizeText(sanitizeMarkup(lookupDisplayWord || dictionary.word || selectedText)), phonetic: normalizePhonetic(dictionary.phonetic || ''), ...lookupPrimary(dictionary) } : null
   const definitionText = normalizeText(sanitizeMarkup(lookupDisplayDefinition || lookupData?.firstDefinition || ''))
   const translationLines = translation ? sanitizeMarkup(translation.result).split(/\r?\n+/).map(l => normalizeText(l)).filter(Boolean) : []
+  const isSingleWordTranslateOnly =
+    state === 'translate' &&
+    selectedWordCount === 1 &&
+    Boolean(translation) &&
+    !dictionary &&
+    translationLines.length <= 1
+  const useFloatingTranslateActions = isParagraphTranslate || isSingleWordTranslateOnly
   const portalTarget = typeof document !== 'undefined' ? document.body : null
   if (!portalTarget) return null
 
@@ -480,7 +492,7 @@ export function Popover({ state, selection, trigger, lookupDisplayWord, lookupDi
       {createPortal(
         <section
           ref={popoverRef}
-          className={`apl-popover${isParagraphTranslate ? ' apl-popover--translate-paragraph' : ''}${state === 'ocrImage' ? ' apl-popover--ocr-image' : ''}`}
+          className={`apl-popover${isParagraphTranslate ? ' apl-popover--translate-paragraph' : ''}${useFloatingTranslateActions ? ' apl-popover--translate-floating-actions' : ''}${isSingleWordTranslateOnly ? ' apl-popover--translate-single-compact' : ''}${state === 'ocrImage' ? ' apl-popover--ocr-image' : ''}`}
           data-testid="popover"
           role="dialog"
           aria-modal="true"
@@ -511,7 +523,7 @@ export function Popover({ state, selection, trigger, lookupDisplayWord, lookupDi
           )}
 
           {state === 'translate' && translation && (
-            <div className={`apl-body apl-translate-compact${isParagraphTranslate ? ' apl-translate-compact--paragraph' : ''}`}>
+            <div className={`apl-body apl-translate-compact${useFloatingTranslateActions ? ' apl-translate-compact--floating-actions' : ''}${isParagraphTranslate ? ' apl-translate-compact--paragraph' : ''}`}>
               {isOcrParagraphTranslate ? (
                 <div className="apl-translate-ocr-stack">
                   <div className="apl-translate-ocr-origin">{selectedText}</div>
@@ -522,7 +534,7 @@ export function Popover({ state, selection, trigger, lookupDisplayWord, lookupDi
               ) : (
                 <div className={`apl-translate-vi apl-translate-vi--primary${isParagraphTranslate ? ' apl-translate-vi--single-line' : ''}`}>{translationLines.length > 0 ? translationLines.join(' ') : normalizeText(sanitizeMarkup(translation.result))}</div>
               )}
-              <div className={`apl-inline-actions apl-translate-inline-actions${isParagraphTranslate ? ' apl-translate-inline-actions--floating' : ''}`}>
+              <div className={`apl-inline-actions apl-translate-inline-actions${useFloatingTranslateActions ? ' apl-translate-inline-actions--floating' : ''}`}>
                 {isParagraphTranslate && (
                   <button type="button" className="apl-button apl-audio apl-audio-mini" aria-label="Play audio" onClick={() => void playAudio()}><AudioIcon /></button>
                 )}

@@ -191,9 +191,7 @@ function readBoxShadowInsets(boxShadow: string): {
   return { left, right, top, bottom };
 }
 
-function getPopoverWindowInsets(
-  popover: HTMLElement,
-): {
+function getPopoverWindowInsets(popover: HTMLElement): {
   left: number;
   right: number;
   top: number;
@@ -519,7 +517,10 @@ export function usePopoverResize(
           window.innerHeight >
             lastWindowSizeRef.current.height + RESIZE_EPSILON_PX;
         const inTransientHold = transientViewportHoldUntilRef.current > nowMs;
-        if (transientViewportEarly || (inTransientHold && stillOversizedViewport)) {
+        if (
+          transientViewportEarly ||
+          (inTransientHold && stillOversizedViewport)
+        ) {
           if (transientViewportEarly) {
             transientViewportHoldUntilRef.current =
               nowMs + TRANSIENT_LAYOUT_HOLD_MS;
@@ -592,6 +593,9 @@ export function usePopoverResize(
           popover.offsetHeight,
           measuredRect.height,
         );
+        const isSingleCompactTranslate = popover.classList.contains(
+          "apl-popover--translate-single-compact",
+        );
         const measuredContentWidth = Math.max(1, Math.ceil(measuredWidth));
         const rawOverflowContentWidth = Math.ceil(
           Math.max(popover.scrollWidth, measuredRect.width),
@@ -605,14 +609,18 @@ export function usePopoverResize(
         const overflowContentWidth = hasHorizontalOverflow
           ? Math.max(measuredContentWidth, rawOverflowContentWidth)
           : measuredContentWidth;
-        if (noSubpanelContentWidthRef.current === null) {
-          noSubpanelContentWidthRef.current = measuredContentWidth;
-        }
-        if (hasHorizontalOverflow) {
-          noSubpanelContentWidthRef.current = Math.max(
-            noSubpanelContentWidthRef.current,
-            overflowContentWidth,
-          );
+        if (isSingleCompactTranslate) {
+          noSubpanelContentWidthRef.current = overflowContentWidth;
+        } else {
+          if (noSubpanelContentWidthRef.current === null) {
+            noSubpanelContentWidthRef.current = measuredContentWidth;
+          }
+          if (hasHorizontalOverflow) {
+            noSubpanelContentWidthRef.current = Math.max(
+              noSubpanelContentWidthRef.current,
+              overflowContentWidth,
+            );
+          }
         }
         const baseContentWidth = Math.max(
           1,
@@ -687,8 +695,7 @@ export function usePopoverResize(
             : targetHeight;
         const viewportMismatch =
           Math.abs(window.innerWidth - safeTargetWidth) > RESIZE_EPSILON_PX ||
-          Math.abs(window.innerHeight - safeTargetHeight) >
-            RESIZE_EPSILON_PX;
+          Math.abs(window.innerHeight - safeTargetHeight) > RESIZE_EPSILON_PX;
         const transientViewportSpike =
           transientViewportPrecheck ||
           window.innerWidth > safeTargetWidth + TRANSIENT_VIEWPORT_EXTRA_PX ||
