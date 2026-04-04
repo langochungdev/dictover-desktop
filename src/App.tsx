@@ -1890,7 +1890,30 @@ function QuickConvertWindow() {
 
     void (async () => {
       try {
-        const converted = await quickConvertText({ text, source, target })
+        const request = { text, source, target }
+        let converted: QuickConvertResult
+        try {
+          converted = await quickConvertText(request)
+        } catch (firstCause) {
+          const firstCauseMessage = describeCause(firstCause)
+          const shouldRetry =
+            /timeout|network|fetch|connection|refused|unreachable|temporar/i.test(firstCauseMessage)
+
+          if (!shouldRetry) {
+            throw firstCause
+          }
+
+          appendDebugLog(
+            'quick-convert',
+            'Quick convert first attempt failed, retrying once',
+            `source=${source} target=${target} cause=${firstCauseMessage}`,
+          )
+          await new Promise<void>((resolve) => {
+            window.setTimeout(resolve, 140)
+          })
+          converted = await quickConvertText(request)
+        }
+
         setOutputValue(converted.result)
         setResult(converted)
         appendDebugLog(

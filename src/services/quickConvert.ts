@@ -1,4 +1,5 @@
-import { invokeWithFallback, sidecarPost } from "@/services/tauri";
+import { invoke } from "@tauri-apps/api/core";
+import { sidecarPost } from "@/services/tauri";
 
 export interface QuickConvertWordData {
   input: string;
@@ -33,11 +34,13 @@ export async function quickConvertText(
     typeof window !== "undefined" && "__TAURI_INTERNALS__" in window;
 
   try {
-    return await invokeWithFallback<QuickConvertResult>(
-      "quick_convert_text",
-      { payload: request },
-      async () => sidecarPost<QuickConvertResult>("/quick-convert", request),
-    );
+    if (hasBridge) {
+      return await invoke<QuickConvertResult>("quick_convert_text", {
+        payload: request,
+      });
+    }
+
+    return await sidecarPost<QuickConvertResult>("/quick-convert", request);
   } catch (fetchError) {
     const fetchMessage =
       fetchError instanceof Error ? fetchError.message : String(fetchError);
@@ -47,10 +50,10 @@ export async function quickConvertText(
       textLength: request.text.length,
       endpoint: "http://127.0.0.1:49152/quick-convert",
       fetchError: fetchMessage,
-      phase: hasBridge ? "invoke-or-sidecar-failed" : "sidecar-fetch-no-bridge",
+      phase: hasBridge ? "invoke-failed" : "sidecar-fetch-no-bridge",
     });
     throw new Error(
-      `quick-convert:${hasBridge ? "invoke-or-sidecar-failed" : "sidecar-fetch-no-bridge"}:fetch=${fetchMessage}`,
+      `quick-convert:${hasBridge ? "invoke-failed" : "sidecar-fetch-no-bridge"}:fetch=${fetchMessage}`,
     );
   }
 }
