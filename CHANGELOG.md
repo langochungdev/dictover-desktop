@@ -1,5 +1,25 @@
 # Changelog
 
+## v0.3.0 - 2026-04-04
+
+### Commits
+- Refactor code structure for improved readability and maintainability
+- fix: ensure installation ping directory is created before sending ping
+- feat: add OpenCC support for Chinese script normalization and update requirements
+- Refactor code structure for improved readability and maintainability
+- Refactor code structure for improved readability and maintainability
+- feat: add uninstall ping functionality to track application removals
+- feat: implement version management and download link resolution in web interface
+- feat: update version to 0.1.0 and modify quick translate source language defaults
+- feat: update version to 0.2.0 in Cargo.toml and Cargo.lock
+- feat: implement OCR overlay background capture and update popover styles for compact translation
+- feat: implement Quick Convert feature with popup and settings
+- feat: enhance quick convert functionality with audio support and metadata
+- feat: enhance Quick Convert functionality with new position modes and metadata handling
+- feat: add warmup endpoint and related functionality for language translation
+- feat: enhance Quick Convert popup with horizontal positioning classes and styles
+- fix: stabilize settings tray toggle behavior
+
 ## v0.2.0 - 2026-04-03
 
 ### Commits
