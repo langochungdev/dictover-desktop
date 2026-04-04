@@ -51,8 +51,13 @@ fn sanitize_shortcut(raw: &str, fallback: &str, allow_modifier_only: bool) -> St
     }
 
     if key_count == 0 && allow_modifier_only {
-        if parts.len() == 1 && parts[0].eq_ignore_ascii_case("shift") {
-            return "Shift".to_owned();
+        if parts.len() == 1 {
+            if parts[0].eq_ignore_ascii_case("shift") {
+                return "Shift".to_owned();
+            }
+            if parts[0].eq_ignore_ascii_case("alt") {
+                return "Alt".to_owned();
+            }
         }
         return fallback.to_owned();
     }
@@ -70,6 +75,7 @@ pub struct AppConfig {
     pub enable_lookup: bool,
     pub enable_translate: bool,
     pub enable_audio: bool,
+    pub enable_popover_hotkey: bool,
     pub enable_ocr: bool,
     pub auto_play_audio_mode: String,
     pub popover_trigger_mode: String,
@@ -98,10 +104,11 @@ impl Default for AppConfig {
             enable_lookup: true,
             enable_translate: true,
             enable_audio: true,
+            enable_popover_hotkey: true,
             enable_ocr: true,
             auto_play_audio_mode: "off".to_owned(),
             popover_trigger_mode: "shortcut".to_owned(),
-            popover_shortcut: "Ctrl+Shift+D".to_owned(),
+            popover_shortcut: "Shift".to_owned(),
             ocr_hotkey: "Alt+A".to_owned(),
             source_language: "en".to_owned(),
             target_language: "vi".to_owned(),
@@ -111,7 +118,7 @@ impl Default for AppConfig {
             show_example: true,
             popover_open_panel_mode: "none".to_owned(),
             popover_definition_language_mode: "output".to_owned(),
-            hotkey_translate_shortcut: "Shift".to_owned(),
+            hotkey_translate_shortcut: "Alt".to_owned(),
             enable_hotkey_translate: false,
             hotkey_translate_ctrl_enter_send: true,
             quick_convert_hotkey: "Ctrl+Space".to_owned(),
@@ -132,7 +139,7 @@ impl AppConfig {
         if !matches!(next.popover_trigger_mode.as_str(), "auto" | "shortcut") {
             next.popover_trigger_mode = "shortcut".to_owned();
         }
-        next.popover_shortcut = sanitize_shortcut(&next.popover_shortcut, "Ctrl+Shift+D", false);
+        next.popover_shortcut = sanitize_shortcut(&next.popover_shortcut, "Shift", true);
         next.ocr_hotkey = sanitize_shortcut(&next.ocr_hotkey, "Alt+A", false);
         if !matches!(
             next.source_language.as_str(),
@@ -171,7 +178,7 @@ impl AppConfig {
             next.popover_definition_language_mode = "output".to_owned();
         }
         next.hotkey_translate_shortcut =
-            sanitize_shortcut(&next.hotkey_translate_shortcut, "Shift", true);
+            sanitize_shortcut(&next.hotkey_translate_shortcut, "Alt", true);
         next.quick_convert_hotkey =
             sanitize_shortcut(&next.quick_convert_hotkey, "Ctrl+Space", false);
         if next.quick_convert_popup_position == "left-middle" {

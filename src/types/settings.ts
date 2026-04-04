@@ -23,6 +23,7 @@ export interface AppSettings {
   enable_lookup: boolean;
   enable_translate: boolean;
   enable_audio: boolean;
+  enable_popover_hotkey: boolean;
   enable_ocr: boolean;
   auto_play_audio_mode: AutoPlayAudioMode;
   popover_trigger_mode: PopoverTriggerMode;
@@ -102,13 +103,14 @@ function sanitizeShortcut(
     }
   }
 
-  if (
-    keyCount === 0 &&
-    allowModifierOnly &&
-    parts.length === 1 &&
-    parts[0].toLowerCase() === "shift"
-  ) {
-    return "Shift";
+  if (keyCount === 0 && allowModifierOnly && parts.length === 1) {
+    const modifier = parts[0].toLowerCase();
+    if (modifier === "shift") {
+      return "Shift";
+    }
+    if (modifier === "alt") {
+      return "Alt";
+    }
   }
 
   if (keyCount !== 1) {
@@ -122,10 +124,11 @@ export const DEFAULT_SETTINGS: AppSettings = {
   enable_lookup: true,
   enable_translate: true,
   enable_audio: true,
+  enable_popover_hotkey: true,
   enable_ocr: true,
   auto_play_audio_mode: "off",
   popover_trigger_mode: "shortcut",
-  popover_shortcut: "Ctrl+Shift+D",
+  popover_shortcut: "Shift",
   ocr_hotkey: "Alt+A",
   source_language: "en",
   target_language: "vi",
@@ -135,7 +138,7 @@ export const DEFAULT_SETTINGS: AppSettings = {
   show_example: true,
   popover_open_panel_mode: "none",
   popover_definition_language_mode: "output",
-  hotkey_translate_shortcut: "Shift",
+  hotkey_translate_shortcut: "Alt",
   enable_hotkey_translate: false,
   hotkey_translate_ctrl_enter_send: true,
   quick_convert_hotkey: "Ctrl+Space",
@@ -186,7 +189,7 @@ export function sanitizeSettings(partial: Partial<AppSettings>): AppSettings {
   const popoverShortcut = sanitizeShortcut(
     merged.popover_shortcut,
     DEFAULT_SETTINGS.popover_shortcut,
-    false,
+    true,
   );
   const ocrHotkey = sanitizeShortcut(
     merged.ocr_hotkey,
@@ -280,6 +283,7 @@ export function sanitizeSettings(partial: Partial<AppSettings>): AppSettings {
     enable_lookup: merged.enable_lookup !== false,
     enable_translate: merged.enable_translate !== false,
     enable_audio: merged.enable_audio !== false,
+    enable_popover_hotkey: merged.enable_popover_hotkey !== false,
     enable_ocr: merged.enable_ocr !== false,
     show_example: merged.show_example !== false,
     auto_play_audio_mode: audioMode,

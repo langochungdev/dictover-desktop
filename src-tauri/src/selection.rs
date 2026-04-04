@@ -28,7 +28,8 @@ struct AutoSelectionState {
 
 struct ModifierHotkeyState {
     shift_pressed_count: u8,
-    shift_started_at: Option<Instant>,
+    alt_pressed_count: u8,
+    modifier_started_at: Option<Instant>,
     blocked: bool,
 }
 
@@ -109,7 +110,8 @@ fn modifier_hotkey_state() -> &'static Mutex<ModifierHotkeyState> {
     MODIFIER_HOTKEY_STATE.get_or_init(|| {
         Mutex::new(ModifierHotkeyState {
             shift_pressed_count: 0,
-            shift_started_at: None,
+            alt_pressed_count: 0,
+            modifier_started_at: None,
             blocked: false,
         })
     })
@@ -243,6 +245,10 @@ fn is_shift_key(key: rdev::Key) -> bool {
     matches!(key, rdev::Key::ShiftLeft | rdev::Key::ShiftRight)
 }
 
+fn is_modifier_trigger_key(key: rdev::Key) -> bool {
+    is_shift_key(key) || is_alt_key(key)
+}
+
 fn on_modifier_hotkey_event(app: &AppHandle, event_type: &rdev::EventType) {
     match event_type {
         rdev::EventType::KeyPress(key) => {
@@ -250,21 +256,26 @@ fn on_modifier_hotkey_event(app: &AppHandle, event_type: &rdev::EventType) {
                 return;
             };
 
-            if is_shift_key(*key) {
-                if guard.shift_pressed_count == 0 {
-                    guard.shift_started_at = Some(Instant::now());
+            if is_modifier_trigger_key(*key) {
+                if guard.shift_pressed_count == 0 && guard.alt_pressed_count == 0 {
+                    guard.modifier_started_at = Some(Instant::now());
                     guard.blocked = false;
                 }
-                guard.shift_pressed_count = guard.shift_pressed_count.saturating_add(1).min(2);
+
+                if is_shift_key(*key) {
+                    guard.shift_pressed_count = guard.shift_pressed_count.saturating_add(1).min(2);
+                } else {
+                    guard.alt_pressed_count = guard.alt_pressed_count.saturating_add(1).min(2);
+                }
                 return;
             }
 
-            if guard.shift_pressed_count > 0 {
+            if guard.shift_pressed_count > 0 || guard.alt_pressed_count > 0 {
                 guard.blocked = true;
             }
         }
         rdev::EventType::KeyRelease(key) => {
-            if !is_shift_key(*key) {
+            if !is_modifier_trigger_key(*key) {
                 return;
             }
 
@@ -273,32 +284,48 @@ fn on_modifier_hotkey_event(app: &AppHandle, event_type: &rdev::EventType) {
                     return;
                 };
 
-                if guard.shift_pressed_count == 0 {
+                if guard.shift_pressed_count == 0 && guard.alt_pressed_count == 0 {
                     return;
                 }
 
-                guard.shift_pressed_count = guard.shift_pressed_count.saturating_sub(1);
-                if guard.shift_pressed_count > 0 {
+                if is_shift_key(*key) {
+                    if guard.shift_pressed_count == 0 {
+                        return;
+                    }
+                    guard.shift_pressed_count = guard.shift_pressed_count.saturating_sub(1);
+                } else {
+                    if guard.alt_pressed_count == 0 {
+                        return;
+                    }
+                    guard.alt_pressed_count = guard.alt_pressed_count.saturating_sub(1);
+                }
+
+                if guard.shift_pressed_count > 0 || guard.alt_pressed_count > 0 {
                     return;
                 }
 
                 let quick_tap = guard
-                    .shift_started_at
+                    .modifier_started_at
                     .map(|started| {
                         started.elapsed() <= Duration::from_millis(SHIFT_TRIGGER_MAX_HOLD_MS)
                     })
                     .unwrap_or(false);
                 let allowed = quick_tap && !guard.blocked;
 
-                guard.shift_started_at = None;
+                guard.modifier_started_at = None;
                 guard.blocked = false;
                 allowed
             };
 
             if should_trigger {
+                let modifier = if is_shift_key(*key) {
+                    hotkey::ModifierShortcut::Shift
+                } else {
+                    hotkey::ModifierShortcut::Alt
+                };
                 let app_for_task = app.clone();
                 tauri::async_runtime::spawn(async move {
-                    let _ = hotkey::handle_modifier_shortcut(app_for_task).await;
+                    let _ = hotkey::handle_modifier_shortcut(app_for_task, modifier).await;
                 });
             }
         }

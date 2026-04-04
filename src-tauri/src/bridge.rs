@@ -13,6 +13,13 @@ use tauri::{
     AppHandle, Emitter, LogicalSize, Manager, PhysicalPosition, PhysicalSize, Position, Size, State,
 };
 
+#[cfg(target_os = "windows")]
+use windows::Win32::Foundation::RECT;
+#[cfg(target_os = "windows")]
+use windows::Win32::UI::WindowsAndMessaging::{
+    SystemParametersInfoW, SPI_GETWORKAREA, SYSTEM_PARAMETERS_INFO_UPDATE_FLAGS,
+};
+
 use crate::automation;
 use crate::config::{self, AppConfig};
 use crate::debug_trace;
@@ -52,6 +59,7 @@ const VERSION_MANIFEST_URL: &str = "https://dictover.langochung.me/version.json"
 const DEFAULT_RELEASES_PAGE: &str = "https://dictover.langochung.me/releases";
 const QUICK_CONVERT_BASE_WIDTH: f64 = 520.0;
 const QUICK_CONVERT_BASE_HEIGHT: f64 = 360.0;
+const SETTINGS_WORKAREA_FALLBACK_TASKBAR_PX: i32 = 56;
 const SIDECAR_HEALTH_WAIT_TIMEOUT_MS: u64 = 2600;
 const SIDECAR_HEALTH_REQUEST_TIMEOUT_MS: u64 = 700;
 const SIDECAR_HEALTH_RETRY_BASE_MS: u64 = 80;
@@ -1165,6 +1173,105 @@ fn resolve_quick_convert_position(
     )
 }
 
+#[cfg(target_os = "windows")]
+fn windows_work_area_rect() -> Option<(i32, i32, i32, i32)> {
+    let mut rect = RECT::default();
+    let ok = unsafe {
+        SystemParametersInfoW(
+            SPI_GETWORKAREA,
+            0,
+            Some((&mut rect as *mut RECT).cast()),
+            SYSTEM_PARAMETERS_INFO_UPDATE_FLAGS(0),
+        )
+    }
+    .is_ok();
+
+    if !ok {
+        return None;
+    }
+
+    let width = rect.right - rect.left;
+    let height = rect.bottom - rect.top;
+    if width <= 0 || height <= 0 {
+        return None;
+    }
+
+    Some((rect.left, rect.top, width, height))
+}
+
+fn resolve_settings_work_area(
+    app: &AppHandle,
+    window: &tauri::WebviewWindow,
+) -> Option<(i32, i32, u32, u32)> {
+    #[cfg(target_os = "windows")]
+    {
+        if let Some((left, top, width, height)) = windows_work_area_rect() {
+            return Some((
+                left,
+                top,
+                u32::try_from(width).ok()?,
+                u32::try_from(height).ok()?,
+            ));
+        }
+    }
+
+    let monitor = window
+        .current_monitor()
+        .ok()
+        .flatten()
+        .or_else(|| app.primary_monitor().ok().flatten())?;
+
+    let pos = monitor.position();
+    let size = monitor.size();
+    let height = i32::try_from(size.height)
+        .ok()?
+        .saturating_sub(SETTINGS_WORKAREA_FALLBACK_TASKBAR_PX)
+        .max(260);
+
+    Some((pos.x, pos.y, size.width, u32::try_from(height).ok()?))
+}
+
+fn apply_settings_window_viewport_layout(
+    app: &AppHandle,
+    window: &tauri::WebviewWindow,
+) -> Result<(), String> {
+    let Some((left, top, width, height)) = resolve_settings_work_area(app, window) else {
+        return Ok(());
+    };
+
+    let mut target_height = i32::try_from(height).unwrap_or(i32::MAX);
+    if let Some(monitor) = window
+        .current_monitor()
+        .ok()
+        .flatten()
+        .or_else(|| app.primary_monitor().ok().flatten())
+    {
+        let monitor_height = i32::try_from(monitor.size().height).unwrap_or(0);
+        if monitor_height > 0 {
+            let diff = monitor_height.saturating_sub(target_height);
+            // On some Windows setups (for example auto-hide taskbar), work area can
+            // effectively match full monitor height. Reserve a bottom safe-gap so
+            // taskbar remains clickable while settings is open.
+            if diff <= 4 {
+                target_height = target_height
+                    .saturating_sub(SETTINGS_WORKAREA_FALLBACK_TASKBAR_PX)
+                    .max(260);
+            }
+        }
+    }
+
+    window
+        .set_position(Position::Physical(PhysicalPosition::new(left, top)))
+        .map_err(|err| format!("set settings window position failed: {err}"))?;
+
+    window
+        .set_size(Size::Physical(PhysicalSize::new(
+            width,
+            u32::try_from(target_height).unwrap_or(height),
+        )))
+        .map_err(|err| format!("set settings window size failed: {err}"))
+}
+
 pub fn show_quick_convert_window_with_seed(
     app: &AppHandle,
     position_mode: &str,
@@ -1776,11 +1883,9 @@ pub fn show_settings_window(app: AppHandle) -> Result<(), String> {
         .get_webview_window("main")
         .ok_or_else(|| "main window not found".to_owned())?;
 
-    let _ = main.set_always_on_top(true);
-    let _ = main.center();
+    apply_settings_window_viewport_layout(&app, &main)?;
     main.show()
         .map_err(|err| format!("show settings window failed: {err}"))?;
-    let _ = main.set_always_on_top(false);
 
     main.set_focus()
         .map_err(|err| format!("focus settings window failed: {err}"))?;
@@ -1804,11 +1909,9 @@ pub fn toggle_settings_window(app: AppHandle) -> Result<(), String> {
         return Ok(());
     }
 
-    let _ = main.set_always_on_top(true);
-    let _ = main.center();
+    apply_settings_window_viewport_layout(&app, &main)?;
     main.show()
         .map_err(|err| format!("show settings window failed: {err}"))?;
-    let _ = main.set_always_on_top(false);
 
     main.set_focus()
         .map_err(|err| format!("focus settings window failed: {err}"))?;

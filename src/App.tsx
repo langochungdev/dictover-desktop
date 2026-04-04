@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react'
 import { invoke } from '@tauri-apps/api/core'
 import { emit, listen } from '@tauri-apps/api/event'
 import { LogicalSize } from '@tauri-apps/api/dpi'
@@ -252,6 +252,9 @@ function describeCause(cause: unknown): string {
 }
 
 function SettingsWindow() {
+  const SETTINGS_TASKBAR_GUARD_PX = 56
+  const SETTINGS_WINDOW_EXTRA_BACKDROP_PX = 88
+  const SETTINGS_BLUR_CLOSE_DELAY_MS = 60
   const [settings, setSettings] = useState<AppSettings>(DEFAULT_SETTINGS)
   const [status, setStatus] = useState<SettingsStatus>('ready')
   const [updateAvailable, setUpdateAvailable] = useState<UpdateAvailablePayload | null>(null)
@@ -261,6 +264,8 @@ function SettingsWindow() {
   const saveSequenceRef = useRef(0)
   const shellRef = useRef<HTMLElement | null>(null)
   const lastSyncedWindowHeightRef = useRef(0)
+  const lastVerticalCenterOffsetRef = useRef(-1)
+  const [settingsVerticalCenterOffset, setSettingsVerticalCenterOffset] = useState(0)
   const copy = getSettingsCopy(settings.target_language)
   const hasTauriBridge = typeof window !== 'undefined' && '__TAURI_INTERNALS__' in window
 
@@ -300,6 +305,71 @@ function SettingsWindow() {
     }
     void invoke('hide_settings_window').catch(() => undefined)
   }, [hasTauriBridge])
+
+  const closeSettingsWindowWithReason = useCallback((reason: string) => {
+    appendDebugLog('settings', 'Close settings window', reason)
+    closeSettingsWindow()
+  }, [closeSettingsWindow])
+
+  const describePointerTarget = useCallback((target: EventTarget | null): string => {
+    if (!(target instanceof Element)) {
+      return 'target=non-element'
+    }
+    const className =
+      typeof (target as HTMLElement).className === 'string'
+        ? (target as HTMLElement).className
+        : ''
+    return `target=${target.tagName.toLowerCase()} class=${className || 'none'}`
+  }, [])
+
+  const shouldCloseFromBackdropEvent = useCallback((
+    event: ReactPointerEvent<HTMLElement> | React.MouseEvent<HTMLElement>,
+    trigger: 'pointerdown' | 'click',
+  ): boolean => {
+    if (!hasTauriBridge) {
+      appendDebugLog('settings', 'Backdrop close skipped', `trigger=${trigger} reason=no-bridge`)
+      return false
+    }
+
+    appendDebugLog(
+      'settings',
+      'Backdrop event received',
+      `trigger=${trigger} ${describePointerTarget(event.target)} y=${Math.round(event.clientY)} innerH=${window.innerHeight}`,
+    )
+
+    const shellElement = shellRef.current
+    const clickedOnBackdrop =
+      event.target === event.currentTarget
+      || (shellElement !== null && event.target === shellElement)
+
+    if (!clickedOnBackdrop) {
+      appendDebugLog('settings', 'Backdrop close skipped', `trigger=${trigger} reason=inside-content-or-panel`)
+      return false
+    }
+
+    if (event.clientY >= window.innerHeight - SETTINGS_TASKBAR_GUARD_PX) {
+      appendDebugLog(
+        'settings',
+        'Backdrop close skipped',
+        `trigger=${trigger} reason=taskbar-guard y=${Math.round(event.clientY)} guardPx=${SETTINGS_TASKBAR_GUARD_PX}`,
+      )
+      return false
+    }
+
+    return true
+  }, [SETTINGS_TASKBAR_GUARD_PX, describePointerTarget, hasTauriBridge])
+
+  const handleSettingsBackdropPointerDown = useCallback((event: ReactPointerEvent<HTMLElement>) => {
+    if (shouldCloseFromBackdropEvent(event, 'pointerdown')) {
+      closeSettingsWindowWithReason('backdrop-pointerdown')
+    }
+  }, [closeSettingsWindowWithReason, shouldCloseFromBackdropEvent])
+
+  const handleSettingsBackdropClick = useCallback((event: React.MouseEvent<HTMLElement>) => {
+    if (shouldCloseFromBackdropEvent(event, 'click')) {
+      closeSettingsWindowWithReason('backdrop-click')
+    }
+  }, [closeSettingsWindowWithReason, shouldCloseFromBackdropEvent])
 
   useEffect(() => {
     settingsRef.current = settings
@@ -461,7 +531,7 @@ function SettingsWindow() {
       }
 
       if (event.key === 'Escape') {
-        closeSettingsWindow()
+        closeSettingsWindowWithReason('escape')
       }
     }
 
@@ -470,31 +540,162 @@ function SettingsWindow() {
     return () => {
       window.removeEventListener('keydown', onKeydown)
     }
-  }, [closeSettingsWindow])
+  }, [closeSettingsWindowWithReason])
+
+  useEffect(() => {
+    if (!hasTauriBridge) {
+      setSettingsVerticalCenterOffset(0)
+      return
+    }
+
+    const recalcSettingsVerticalCenterOffset = () => {
+      const screenHeight = Math.round(Number(window.screen?.height) || 0)
+      const innerHeight = Math.round(window.innerHeight || 0)
+      const removedBottomGap =
+        screenHeight > 0 && innerHeight > 0
+          ? Math.max(0, screenHeight - innerHeight)
+          : 0
+      const nextOffset = Math.min(80, Math.round(removedBottomGap / 2))
+
+      if (nextOffset !== lastVerticalCenterOffsetRef.current) {
+        appendDebugLog(
+          'settings',
+          'Settings vertical center offset updated',
+          `screenH=${screenHeight} innerH=${innerHeight} removedGap=${removedBottomGap} offset=${nextOffset}`,
+        )
+        lastVerticalCenterOffsetRef.current = nextOffset
+      }
+
+      setSettingsVerticalCenterOffset(nextOffset)
+    }
+
+    recalcSettingsVerticalCenterOffset()
+    window.addEventListener('resize', recalcSettingsVerticalCenterOffset)
+
+    return () => {
+      window.removeEventListener('resize', recalcSettingsVerticalCenterOffset)
+    }
+  }, [hasTauriBridge])
 
   useEffect(() => {
     if (!hasTauriBridge) {
       return
     }
 
-    const onPointerDown = (event: PointerEvent) => {
-      const target = event.target as Node | null
-      const shell = shellRef.current
-      if (!target || !shell) {
-        return
+    appendDebugLog('settings', 'Outside-close strategy active', 'pointer-capture + blur-hidden')
+
+    let blurTimerId = 0
+    let cleanupFocusChanged: (() => void) | null = null
+
+    const scheduleCloseIfHidden = (reason: string) => {
+      if (blurTimerId) {
+        window.clearTimeout(blurTimerId)
       }
-      if (shell.contains(target)) {
-        return
-      }
-      closeSettingsWindow()
+
+      blurTimerId = window.setTimeout(() => {
+        if (document.visibilityState === 'hidden') {
+          closeSettingsWindowWithReason(reason)
+          return
+        }
+        appendDebugLog(
+          'settings',
+          'Skip close because document still visible',
+          `${reason} visibility=${document.visibilityState}`,
+        )
+      }, SETTINGS_BLUR_CLOSE_DELAY_MS)
     }
 
-    window.addEventListener('pointerdown', onPointerDown)
+    const onWindowBlur = () => {
+      scheduleCloseIfHidden('window-blur-hidden')
+    }
+
+    const onVisibilityChange = () => {
+      if (document.visibilityState === 'hidden') {
+        closeSettingsWindowWithReason('visibility-hidden')
+      }
+    }
+
+    const onPageHide = () => {
+      closeSettingsWindowWithReason('pagehide-hidden')
+    }
+
+    void (async () => {
+      try {
+        const unlisten = await getCurrentWindow().onFocusChanged(({ payload: focused }) => {
+          if (!focused) {
+            scheduleCloseIfHidden('tauri-window-blur-hidden')
+          }
+        })
+        cleanupFocusChanged = unlisten
+      } catch {
+        cleanupFocusChanged = null
+      }
+    })()
+
+    window.addEventListener('blur', onWindowBlur)
+    document.addEventListener('visibilitychange', onVisibilityChange)
+    window.addEventListener('pagehide', onPageHide)
 
     return () => {
-      window.removeEventListener('pointerdown', onPointerDown)
+      if (blurTimerId) {
+        window.clearTimeout(blurTimerId)
+      }
+      cleanupFocusChanged?.()
+      window.removeEventListener('blur', onWindowBlur)
+      document.removeEventListener('visibilitychange', onVisibilityChange)
+      window.removeEventListener('pagehide', onPageHide)
     }
-  }, [closeSettingsWindow, hasTauriBridge])
+  }, [
+    SETTINGS_BLUR_CLOSE_DELAY_MS,
+    closeSettingsWindowWithReason,
+    hasTauriBridge,
+  ])
+
+  useEffect(() => {
+    if (!hasTauriBridge) {
+      return
+    }
+
+    const onGlobalPointerDownCapture = (event: PointerEvent) => {
+      const shell = shellRef.current
+      if (!shell) {
+        return
+      }
+
+      const target = event.target as Node | null
+      const clickedInsideShell = !!target && shell.contains(target)
+      if (clickedInsideShell) {
+        appendDebugLog(
+          'settings',
+          'Global pointer inside settings frame',
+          `x=${Math.round(event.clientX)} y=${Math.round(event.clientY)}`,
+        )
+        return
+      }
+
+      if (event.clientY >= window.innerHeight - SETTINGS_TASKBAR_GUARD_PX) {
+        appendDebugLog(
+          'settings',
+          'Global pointer outside ignored',
+          `reason=taskbar-guard x=${Math.round(event.clientX)} y=${Math.round(event.clientY)} guardPx=${SETTINGS_TASKBAR_GUARD_PX}`,
+        )
+        return
+      }
+
+      appendDebugLog(
+        'settings',
+        'Global pointer outside settings frame',
+        `x=${Math.round(event.clientX)} y=${Math.round(event.clientY)}`,
+      )
+      closeSettingsWindowWithReason('outside-frame-pointerdown-capture')
+    }
+
+    window.addEventListener('pointerdown', onGlobalPointerDownCapture, true)
+
+    return () => {
+      window.removeEventListener('pointerdown', onGlobalPointerDownCapture, true)
+    }
+  }, [SETTINGS_TASKBAR_GUARD_PX, closeSettingsWindowWithReason, hasTauriBridge])
 
   const syncSettingsWindowSize = useCallback(async () => {
     if (!hasTauriBridge || !shellRef.current) {
@@ -504,7 +705,15 @@ function SettingsWindow() {
     const shell = shellRef.current
     const visibleHeight = Math.ceil(shell.getBoundingClientRect().height)
     const contentHeight = Math.ceil(shell.scrollHeight)
-    const nextHeight = Math.max(180, Math.max(visibleHeight, contentHeight) + 12)
+    const contentHeightWithPadding = Math.max(visibleHeight, contentHeight) + 12
+    const maxAvailableHeight =
+      typeof window !== 'undefined' && Number.isFinite(window.screen?.availHeight)
+        ? Math.max(260, Math.round(window.screen.availHeight - 8))
+        : Number.POSITIVE_INFINITY
+    const nextHeight = Math.min(
+      maxAvailableHeight,
+      Math.max(240, contentHeightWithPadding + SETTINGS_WINDOW_EXTRA_BACKDROP_PX),
+    )
     if (Math.abs(nextHeight - lastSyncedWindowHeightRef.current) <= 1) {
       return
     }
@@ -650,49 +859,63 @@ function SettingsWindow() {
   }, [copy, status])
 
   return (
-    <main ref={shellRef} className={`apl-settings-shell ${status === 'saving' ? 'is-saving' : ''}`}>
-      <div className="apl-settings-toolbar-clean">
-        <div className="apl-settings-status-bar apl-settings-status-bar--compact" aria-live="polite">
-          <span className={`apl-settings-status-dot ${status === 'ready' || status === 'autoSaved' ? 'is-active' : ''}`} />
-          <span>{statusMessage}</span>
+    <main
+      className="apl-settings-backdrop"
+      onPointerDown={handleSettingsBackdropPointerDown}
+      onClick={handleSettingsBackdropClick}
+    >
+      <section
+        ref={shellRef}
+        className={`apl-settings-shell ${status === 'saving' ? 'is-saving' : ''}`}
+        style={
+          settingsVerticalCenterOffset > 0
+            ? { marginTop: `${settingsVerticalCenterOffset}px` }
+            : undefined
+        }
+      >
+        <div className="apl-settings-toolbar-clean">
+          <div className="apl-settings-status-bar apl-settings-status-bar--compact" aria-live="polite">
+            <span className={`apl-settings-status-dot ${status === 'ready' || status === 'autoSaved' ? 'is-active' : ''}`} />
+            <span>{statusMessage}</span>
+          </div>
+          <button type="button" onClick={handleResetDefaults}>
+            {copy.resetDefaults}
+          </button>
         </div>
-        <button type="button" onClick={handleResetDefaults}>
-          {copy.resetDefaults}
-        </button>
-      </div>
 
-      {updateAvailable && (
-        <section
-          className="apl-update-banner apl-update-banner--floating"
-          role="status"
-          aria-live="polite"
-          aria-labelledby="apl-update-title"
-        >
-          <div className="apl-update-banner-main">
-            <h2 id="apl-update-title">Có bản cập nhật mới: {updateAvailable.latest_version}</h2>
-            <p>Bạn đang dùng {updateAvailable.current_version}</p>
-          </div>
-          <div className="apl-update-banner-actions">
-            <button type="button" className="apl-update-action" onClick={openUpdatePage}>
-              Cập nhật ngay
-            </button>
-            <button
-              type="button"
-              className="apl-update-banner-close"
-              onClick={dismissUpdateBanner}
-              aria-label="Đóng thông báo cập nhật"
-            >
-              ×
-            </button>
-          </div>
-        </section>
-      )}
+        {updateAvailable && (
+          <section
+            className="apl-update-banner apl-update-banner--floating"
+            role="status"
+            aria-live="polite"
+            aria-labelledby="apl-update-title"
+          >
+            <div className="apl-update-banner-main">
+              <h2 id="apl-update-title">Có bản cập nhật mới: {updateAvailable.latest_version}</h2>
+              <p>Bạn đang dùng {updateAvailable.current_version}</p>
+            </div>
+            <div className="apl-update-banner-actions">
+              <button type="button" className="apl-update-action" onClick={openUpdatePage}>
+                Cập nhật ngay
+              </button>
+              <button
+                type="button"
+                className="apl-update-banner-close"
+                onClick={dismissUpdateBanner}
+                aria-label="Đóng thông báo cập nhật"
+              >
+                ×
+              </button>
+            </div>
+          </section>
+        )}
 
-      <SettingsPanel
-        open
-        settings={settings}
-        onChange={handleSettingsChange}
-      />
+        <SettingsPanel
+          open
+          settings={settings}
+          onChange={handleSettingsChange}
+        />
+      </section>
     </main>
   )
 }

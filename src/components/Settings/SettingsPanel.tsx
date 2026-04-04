@@ -115,7 +115,7 @@ export function SettingsPanel({ open, settings, onChange }: SettingsPanelProps) 
   const copy = getSettingsCopy(settings.target_language)
 
   const handleShortcutCapture =
-    (field: 'ocr_hotkey' | 'hotkey_translate_shortcut' | 'quick_convert_hotkey') =>
+    (field: 'popover_shortcut' | 'ocr_hotkey' | 'hotkey_translate_shortcut' | 'quick_convert_hotkey') =>
     (event: KeyboardEvent<HTMLInputElement>) => {
       if (event.key === 'Tab') {
         return
@@ -131,10 +131,12 @@ export function SettingsPanel({ open, settings, onChange }: SettingsPanelProps) 
 
       const shortcut = buildShortcutFromEvent(event)
       if (!shortcut) {
-        if (event.key === 'Shift') {
+        if (event.key === 'Shift' || event.key === 'Alt') {
           const nextShortcut =
             field === 'hotkey_translate_shortcut'
-              ? 'Shift'
+              ? (event.key === 'Alt' ? 'Alt' : 'Shift')
+              : field === 'popover_shortcut'
+                ? (event.key === 'Alt' ? 'Alt' : 'Shift')
               : field === 'ocr_hotkey'
                 ? 'Alt+A'
                 : 'Ctrl+Space'
@@ -233,6 +235,27 @@ export function SettingsPanel({ open, settings, onChange }: SettingsPanelProps) 
 
               <div className="apl-settings-sep">
                 <div className="apl-settings-ocr-inline">
+                  <div className="apl-settings-hotkey-block">
+                    <span className="apl-settings-hotkey-block-title">{copy.popoverShortcut}</span>
+                    <label className="apl-settings-hotkey-merged apl-settings-hotkey-merged--compact">
+                      <input
+                        type="checkbox"
+                        checked={settings.enable_popover_hotkey}
+                        onChange={(event) => onChange(setField(settings, 'enable_popover_hotkey', event.target.checked))}
+                        aria-label={copy.popoverShortcut}
+                      />
+                      <input
+                        type="text"
+                        value={settings.popover_shortcut}
+                        size={shortcutInputSize(settings.popover_shortcut)}
+                        placeholder={copy.shortcutPlaceholder}
+                        readOnly
+                        disabled={!settings.enable_popover_hotkey}
+                        onKeyDown={handleShortcutCapture('popover_shortcut')}
+                      />
+                    </label>
+                  </div>
+
                   <div className="apl-settings-hotkey-block">
                     <span className="apl-settings-hotkey-block-title">{copy.ocrShortcut}</span>
                     <label className="apl-settings-hotkey-merged apl-settings-hotkey-merged--compact">

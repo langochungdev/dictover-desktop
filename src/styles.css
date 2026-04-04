@@ -21,7 +21,7 @@ body {
 }
 
 body.apl-settings-body {
-    background: #0a0a0a;
+    background: transparent;
     overflow: hidden;
     padding: 0;
     box-sizing: border-box;
@@ -78,6 +78,16 @@ body.apl-preview-body {
 .apl-settings-shell,
 .apl-popover-shell {
     caret-color: transparent;
+}
+
+.apl-settings-backdrop {
+    position: fixed;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 12px;
+    background: transparent;
 }
 
 .apl-settings-shell {
@@ -1241,6 +1251,10 @@ button {
     position: relative;
 }
 
+.apl-settings-backdrop .apl-settings-shell {
+    width: min(980px, calc(100vw - 24px));
+}
+
 .apl-translate-compact--floating-actions {
     position: relative;
 }
@@ -2028,7 +2042,7 @@ button {
 
 .apl-settings-ocr-inline {
     display: grid;
-    grid-template-columns: max-content max-content;
+    grid-template-columns: repeat(3, max-content);
     gap: 6px;
     align-items: end;
     justify-content: start;
@@ -2351,6 +2365,12 @@ button {
 @media (max-width: 640px) {
     .apl-app-shell {
         padding: 1rem 0.75rem 5rem;
+    }
+
+    .apl-settings-backdrop {
+        align-items: flex-start;
+        padding: 0;
+        background: transparent;
     }
 
     .apl-settings-shell {

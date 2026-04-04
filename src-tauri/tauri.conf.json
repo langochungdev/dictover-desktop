@@ -19,7 +19,8 @@
         "resizable": false,
         "decorations": false,
         "skipTaskbar": true,
-        "transparent": false,
+        "transparent": true,
+        "shadow": false,
         "center": true,
         "visibleOnAllWorkspaces": false
       },
