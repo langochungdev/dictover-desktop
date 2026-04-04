@@ -23,10 +23,12 @@ pub fn apply_default_sidecar_endpoints() {
     let port = std::env::var("SIDECAR_PORT").unwrap_or_else(|_| SIDECAR_PORT.to_owned());
     let base = format!("http://{host}:{port}");
     set_if_missing("SIDECAR_URL", &format!("{base}/translate"));
+    set_if_missing("SIDECAR_QUICK_CONVERT_URL", &format!("{base}/quick-convert"));
     set_if_missing("SIDECAR_LOOKUP_URL", &format!("{base}/lookup"));
     set_if_missing("SIDECAR_IMAGES_URL", &format!("{base}/images"));
     set_if_missing("SIDECAR_OCR_URL", &format!("{base}/ocr"));
     set_if_missing("SIDECAR_OCR_OVERLAY_URL", &format!("{base}/ocr-overlay"));
+    set_if_missing("SIDECAR_WARMUP_URL", &format!("{base}/warmup"));
 }
 
 pub fn start_release_sidecar(app: &AppHandle) -> Result<Option<Child>, Error> {

@@ -40,8 +40,10 @@ fn main() {
                 config: std::sync::Mutex::new(loaded.clone()),
                 client: Client::new(),
             };
+            let warmup_client = state.client.clone();
             app.manage(state);
             app.manage(bridge::UpdateState::default());
+            bridge::schedule_language_warmup(warmup_client, loaded.clone());
             hotkey::register_hotkeys(&app_handle, &loaded)?;
             selection::install_popover_window_guards(&app_handle);
             selection::start_selection_listener(app_handle.clone());

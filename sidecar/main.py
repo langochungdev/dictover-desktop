@@ -13,12 +13,12 @@ try:
     from .image import search_images
     from .ocr import run_ocr, run_ocr_overlay
     from .translation import lookup_dictionary, quick_convert, translate
-    from .engines import HTTP_TIMEOUT, SESSION
+    from .engines import HTTP_TIMEOUT, SESSION, fallback_translate_api
 except ImportError:
     from image import search_images
     from ocr import run_ocr, run_ocr_overlay
     from translation import lookup_dictionary, quick_convert, translate
-    from engines import HTTP_TIMEOUT, SESSION
+    from engines import HTTP_TIMEOUT, SESSION, fallback_translate_api
 
 
 SUPPORTED_SOURCE_LANGS = {
@@ -114,6 +114,25 @@ class OcrRequest(BaseModel):
         return value
 
 
+class WarmupRequest(BaseModel):
+    source: str = Field(default="auto")
+    target: str = Field(default="en")
+
+    @field_validator("source")
+    @classmethod
+    def validate_warmup_source(cls, value: str) -> str:
+        if value not in SUPPORTED_SOURCE_LANGS:
+            raise ValueError("unsupported source language")
+        return value
+
+    @field_validator("target")
+    @classmethod
+    def validate_warmup_target(cls, value: str) -> str:
+        if value not in SUPPORTED_TARGET_LANGS:
+            raise ValueError("unsupported target language")
+        return value
+
+
 app = FastAPI(title="DictOver Sidecar", version="0.1.0")
 TTS_PROXY_RETRY_COUNT = 1
 TTS_PROXY_RETRY_DELAY_SECONDS = 0.2
@@ -163,6 +182,21 @@ def _swap_google_tts_host(url: str) -> str | None:
     return urlunparse(swapped)
 
 
+def _warmup_probe_word(lang: str) -> str:
+    probes = {
+        "vi": "xin chao",
+        "en": "hello",
+        "zh-CN": "你好",
+        "ja": "こんにちは",
+        "ko": "안녕하세요",
+        "ru": "привет",
+        "de": "hallo",
+        "fr": "bonjour",
+        "fi": "hei",
+    }
+    return probes.get(lang, "hello")
+
+
 @app.get("/health")
 async def health() -> dict[str, str]:
     return {"status": "ok"}
@@ -195,6 +229,60 @@ async def quick_convert_endpoint(req: QuickConvertRequest) -> dict:
         return quick_convert(req.text, req.source, req.target)
     except Exception as exc:
         raise HTTPException(status_code=500, detail=str(exc)) from exc
+
+
+@app.post("/warmup")
+async def warmup_endpoint(req: WarmupRequest) -> dict:
+    source = req.source if req.source != "auto" else "en"
+    target = req.target
+    probe = _warmup_probe_word(source)
+    dictionary_probe = _warmup_probe_word(target)
+
+    status: dict[str, dict[str, str | int]] = {}
+
+    try:
+        translated = translate(probe, source, target)
+        status["argos_translate"] = {
+            "ok": 1,
+            "engine": translated.engine,
+            "mode": translated.mode,
+        }
+    except Exception as exc:
+        status["argos_translate"] = {"ok": 0, "error": str(exc)}
+
+    try:
+        fallback = fallback_translate_api(probe, source, target)
+        status["api_translate"] = {
+            "ok": 1,
+            "engine": fallback.engine,
+            "mode": fallback.mode,
+        }
+    except Exception as exc:
+        status["api_translate"] = {"ok": 0, "error": str(exc)}
+
+    try:
+        quick = quick_convert(probe, source, target)
+        status["quick_convert"] = {
+            "ok": 1,
+            "kind": str(quick.get("kind") or "text"),
+        }
+    except Exception as exc:
+        status["quick_convert"] = {"ok": 0, "error": str(exc)}
+
+    try:
+        lookup = lookup_dictionary(dictionary_probe, target)
+        status["lookup"] = {
+            "ok": 1,
+            "provider": str(lookup.get("provider") or "unknown"),
+        }
+    except Exception as exc:
+        status["lookup"] = {"ok": 0, "error": str(exc)}
+
+    return {
+        "source": source,
+        "target": target,
+        "status": status,
+    }
 
 
 @app.get("/tts-proxy")

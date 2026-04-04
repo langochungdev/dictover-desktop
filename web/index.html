@@ -108,9 +108,15 @@
             height: 100%;
         }
 
-        .gif-container:hover {
-            transform: translateY(-2px);
-            filter: brightness(1.1);
+        .home-main {
+            min-height: 0;
+        }
+
+        @media (hover: hover) {
+            .gif-container:hover {
+                transform: translateY(-2px);
+                filter: brightness(1.1);
+            }
         }
 
         /* Fix lỗi hiển thị 1 khung: dùng height 100% thay vì 100vh */
@@ -119,13 +125,138 @@
             height: 100%;
             object-fit: cover;
         }
+
+        @media (max-width: 1024px) {
+            body {
+                height: auto;
+                min-height: 100dvh;
+                overflow: auto;
+            }
+
+            .home-header {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 0.75rem;
+                margin-bottom: 1rem;
+                padding: 0;
+            }
+
+            .home-nav {
+                width: 100%;
+                justify-content: flex-start;
+                gap: 0.75rem;
+                flex-wrap: wrap;
+            }
+
+            .home-nav>a {
+                padding: 0.45rem 0.7rem;
+                border: 1px solid rgba(255, 255, 255, 0.2);
+                border-radius: 0.55rem;
+                background: rgba(255, 255, 255, 0.04);
+            }
+
+            .home-nav .home-divider {
+                display: none;
+            }
+
+            .home-main {
+                display: flex;
+                flex-direction: column;
+                gap: 0.75rem;
+                overflow: visible;
+                padding-bottom: 0.75rem;
+            }
+
+            .home-media {
+                display: grid;
+                grid-template-columns: 1fr;
+                gap: 0.75rem;
+                height: auto;
+            }
+
+            .home-media>.gif-container {
+                min-height: 180px;
+                max-height: 220px;
+            }
+
+            .home-settings {
+                width: 100%;
+            }
+
+            .settings-grid {
+                grid-template-columns: 1fr !important;
+            }
+
+            .home-settings .grid-cols-3 {
+                grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+            }
+
+            .home-settings input,
+            .home-settings select,
+            .home-settings textarea,
+            .home-settings button {
+                font-size: 1rem !important;
+            }
+        }
+
+        @media (max-width: 768px) {
+            body {
+                height: 100dvh;
+                min-height: 100dvh;
+                overflow: hidden;
+                padding: 0.7rem !important;
+            }
+
+            .home-header {
+                margin-bottom: 0.65rem !important;
+                gap: 0.55rem;
+            }
+
+            .home-nav {
+                display: grid;
+                grid-template-columns: repeat(3, minmax(0, 1fr));
+                width: 100%;
+                gap: 0.45rem;
+            }
+
+            .home-nav>a {
+                justify-content: center;
+                padding: 0.45rem 0.35rem;
+                font-size: 0.72rem;
+                line-height: 1.1;
+                white-space: nowrap;
+            }
+
+            .home-main {
+                display: block !important;
+                overflow: hidden !important;
+                padding-bottom: 0 !important;
+            }
+
+            .home-settings {
+                display: none !important;
+            }
+
+            .home-media {
+                width: 100%;
+                height: 100%;
+                display: grid;
+                grid-template-rows: repeat(3, minmax(0, 1fr));
+                gap: 0.55rem;
+            }
+
+            .home-media>.gif-container {
+                min-height: 0;
+                max-height: none;
+            }
+        }
     </style>
 </head>
 
 <body class="flex flex-col p-4 relative">
 
     <!-- Header tối giản với Icon Trắng -->
-    <header class="flex justify-between items-center mb-6 px-2">
+    <header class="home-header flex justify-between items-center mb-6 px-2">
         <div class="flex items-center space-x-2 leading-none">
             <span class="relative inline-flex w-8 h-8 items-center justify-center overflow-visible shrink-0">
                 <img src="./icon.png" alt="Dictover logo" class="w-8 h-8 rounded-md object-cover scale-[2] origin-center pointer-events-none select-none">
@@ -134,26 +265,33 @@
         </div>
 
         <!-- Navigation: All White -->
-        <div class="flex items-center space-x-6 text-xs font-semibold text-white">
+        <div class="home-nav flex items-center space-x-6 text-xs font-semibold text-white">
             <a id="downloadLink" href="https://github.com/langochungdev/dictover-desktop/releases/latest" target="_blank" rel="noopener noreferrer" class="flex items-center space-x-2 hover:opacity-70 transition-all">
                 <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path>
                 </svg>
                 <span>Download</span>
             </a>
-            <div class="w-px h-3 bg-white/20"></div>
+            <div class="home-divider w-px h-3 bg-white/20"></div>
             <a href="https://ankiweb.net/shared/info/1238616050" target="_blank" rel="noopener noreferrer" class="flex items-center space-x-2 hover:opacity-70 transition-all">
                 <span class="w-5 h-5 flex items-center justify-center bg-white text-black rounded-sm text-[10px] font-black tracking-tighter">A</span>
                 <span>Add on Anki</span>
+            </a>
+            <div class="home-divider w-px h-3 bg-white/20"></div>
+            <a href="./releases/" class="flex items-center space-x-2 hover:opacity-70 transition-all">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M12 6v12m6-6H6"></path>
+                </svg>
+                <span>Releases</span>
             </a>
         </div>
     </header>
 
     <!-- Layout chính -->
-    <main class="flex-1 grid grid-cols-12 compact-gap overflow-auto pb-4">
+    <main class="home-main flex-1 grid grid-cols-12 compact-gap overflow-auto pb-4">
 
         <!-- Cột trái: 3 Khung GIF Full (Fixed Bug) -->
-        <div class="col-span-4 flex flex-col compact-gap h-full">
+        <div class="home-media col-span-4 flex flex-col compact-gap h-full">
             <div class="flex-1 bg-[#1a1a1a] notion-border rounded-xl overflow-hidden relative group card-shadow gif-container" onclick="openFullscreen('https://media.giphy.com/media/v1.Y2lkPTc5MGI3NjExNHJndnZ6Zmt6Zmt6Zmt6Zmt6Zmt6Zmt6Zmt6Zmt6Zmt6Zmt6Zmt6JmVwPXYxX2ludGVybmFsX2dpZl9ieV9pZCZjdD1n/3o7TKMGpxU35pY3C48/giphy.gif', 'Instant Translation')">
                 <div class="absolute top-3 left-3 z-10 bg-black/60 backdrop-blur-md px-2 py-1 rounded text-[10px] font-bold text-white border border-white/10">Instant Translation</div>
                 <img src="https://media.giphy.com/media/v1.Y2lkPTc5MGI3NjExNHJndnZ6Zmt6Zmt6Zmt6Zmt6Zmt6Zmt6Zmt6Zmt6Zmt6Zmt6Zmt6JmVwPXYxX2ludGVybmFsX2dpZl9ieV9pZCZjdD1n/3o7TKMGpxU35pY3C48/giphy.gif" alt="GIF 1">
@@ -169,7 +307,7 @@
         </div>
 
         <!-- Cột phải: Settings Dark Mock -->
-        <div class="col-span-8 self-start bg-[#0a0a0a] border border-[#2f2f2f] rounded-2xl flex flex-col shadow-2xl">
+        <div class="home-settings col-span-8 self-start bg-[#0a0a0a] border border-[#2f2f2f] rounded-2xl flex flex-col shadow-2xl">
             <div class="px-5 py-3 bg-[#121212] border-b border-[#2f2f2f] flex justify-between items-center">
                 <div class="flex space-x-1.5">
                     <div class="w-2.5 h-2.5 rounded-full bg-[#3b3b3b]"></div>
@@ -191,11 +329,11 @@
                     </div>
 
                     <div class="pt-3">
-                        <div class="grid gap-3 grid-cols-2">
+                        <div class="settings-grid grid gap-3 grid-cols-2">
                             <div class="space-y-3">
                                 <article class="rounded-lg border border-[#2f2f2f] bg-[#181818] p-3">
                                     <h3 class="text-[11px] font-bold uppercase tracking-[0.04em] text-[#9fa7b7] mb-2">Popover</h3>
-                                    <div class="grid grid-cols-[1fr_auto_1fr] gap-2 items-end mb-2">
+                                    <div class="pair-grid grid grid-cols-[1fr_auto_1fr] gap-2 items-end mb-2">
                                         <label class="text-[11px] text-[#9fa7b7]">
                                             Ngôn ngữ nguồn
                                             <select class="mt-1 h-8 w-full rounded-md border border-[#454545] bg-[#1e2128] px-2 text-[12px] text-[#f1f4fa] outline-none">
@@ -210,7 +348,7 @@
                                                 <option value="ru">Tiếng Nga</option>
                                             </select>
                                         </label>
-                                        <div class="h-8 px-2 rounded-md border border-[#454545] bg-[#1e2128] text-[#9fa7b7] flex items-center text-[11px]">⇄</div>
+                                        <div class="swap-chip h-8 px-2 rounded-md border border-[#454545] bg-[#1e2128] text-[#9fa7b7] flex items-center text-[11px]">⇄</div>
                                         <label class="text-[11px] text-[#9fa7b7]">
                                             Ngôn ngữ đích
                                             <select class="mt-1 h-8 w-full rounded-md border border-[#454545] bg-[#1e2128] px-2 text-[12px] text-[#f1f4fa] outline-none">
@@ -232,7 +370,7 @@
 
                                     <div class="mt-2 border-t border-dashed border-[#2f2f2f] pt-2 space-y-2">
                                         <div class="text-[10px] font-bold uppercase tracking-[0.04em] text-[#9fa7b7]">OCR Capture</div>
-                                        <div class="grid grid-cols-[1fr_auto_auto] gap-1.5 items-center text-[10px] text-[#f1f4fa]">
+                                        <div class="triple-control-grid grid grid-cols-[1fr_auto_auto] gap-1.5 items-center text-[10px] text-[#f1f4fa]">
                                             <label class="h-9 rounded-md border border-[#454545] bg-[#1e2128] px-2 text-[11px] text-[#f1f4fa] flex items-center justify-between cursor-pointer">
                                                 <span class="flex items-center gap-2">
                                                     <input type="checkbox" checked>
@@ -248,7 +386,7 @@
 
                                 <article class="rounded-lg border border-[#2f2f2f] bg-[#181818] p-3">
                                     <h3 class="text-[11px] font-bold uppercase tracking-[0.04em] text-[#9fa7b7] mb-2">Dịch nhanh</h3>
-                                    <div class="grid grid-cols-[1fr_auto_1fr] gap-2 items-end mb-2">
+                                    <div class="pair-grid grid grid-cols-[1fr_auto_1fr] gap-2 items-end mb-2">
                                         <label class="text-[11px] text-[#9fa7b7]">
                                             Nguồn
                                             <select class="mt-1 h-8 w-full rounded-md border border-[#454545] bg-[#1e2128] px-2 text-[12px] text-[#f1f4fa] outline-none">
@@ -260,7 +398,7 @@
                                                 <option value="zh-CN">Tiếng Trung (Giản thể)</option>
                                             </select>
                                         </label>
-                                        <div class="h-8 px-2 rounded-md border border-[#454545] bg-[#1e2128] text-[#9fa7b7] flex items-center text-[11px]">⇄</div>
+                                        <div class="swap-chip h-8 px-2 rounded-md border border-[#454545] bg-[#1e2128] text-[#9fa7b7] flex items-center text-[11px]">⇄</div>
                                         <label class="text-[11px] text-[#9fa7b7]">
                                             Đích
                                             <select class="mt-1 h-8 w-full rounded-md border border-[#454545] bg-[#1e2128] px-2 text-[12px] text-[#f1f4fa] outline-none">
@@ -294,7 +432,7 @@
                             <div class="space-y-3">
                                 <article class="rounded-lg border border-[#2f2f2f] bg-[#181818] p-3">
                                     <h3 class="text-[11px] font-bold uppercase tracking-[0.04em] text-[#9fa7b7] mb-2">Chế độ mở panel</h3>
-                                    <div class="grid grid-cols-3 gap-1.5 text-[10px] text-[#f1f4fa]">
+                                    <div class="option-grid grid grid-cols-3 gap-1.5 text-[10px] text-[#f1f4fa]">
                                         <label class="rounded-md border border-[#454545] bg-[#242932] py-1 text-center cursor-pointer"><input type="radio" name="panel-mode" class="mr-1">Tắt</label>
                                         <label class="rounded-md border border-[#4f7fd7] bg-[#20375f] py-1 text-center font-semibold cursor-pointer"><input type="radio" name="panel-mode" class="mr-1" checked>Chi tiết</label>
                                         <label class="rounded-md border border-[#454545] bg-[#242932] py-1 text-center cursor-pointer"><input type="radio" name="panel-mode" class="mr-1">Ảnh</label>
@@ -303,7 +441,7 @@
 
                                 <article class="rounded-lg border border-[#2f2f2f] bg-[#181818] p-3">
                                     <h3 class="text-[11px] font-bold uppercase tracking-[0.04em] text-[#9fa7b7] mb-2">Ngôn ngữ định nghĩa</h3>
-                                    <div class="grid grid-cols-3 gap-1.5 text-[10px] text-[#f1f4fa]">
+                                    <div class="option-grid grid grid-cols-3 gap-1.5 text-[10px] text-[#f1f4fa]">
                                         <label class="rounded-md border border-[#454545] bg-[#242932] py-1 text-center cursor-pointer"><input type="radio" name="definition-mode" class="mr-1">Ngôn ngữ đích</label>
                                         <label class="rounded-md border border-[#454545] bg-[#242932] py-1 text-center cursor-pointer"><input type="radio" name="definition-mode" class="mr-1">Ngôn ngữ nguồn</label>
                                         <label class="rounded-md border border-[#4f7fd7] bg-[#20375f] py-1 text-center font-semibold cursor-pointer"><input type="radio" name="definition-mode" class="mr-1" checked>Tiếng Anh</label>
@@ -312,7 +450,7 @@
 
                                 <article class="rounded-lg border border-[#2f2f2f] bg-[#181818] p-3">
                                     <h3 class="text-[11px] font-bold uppercase tracking-[0.04em] text-[#9fa7b7] mb-2">Tự phát âm thanh</h3>
-                                    <div class="grid grid-cols-3 gap-1.5 text-[10px] text-[#f1f4fa]">
+                                    <div class="option-grid grid grid-cols-3 gap-1.5 text-[10px] text-[#f1f4fa]">
                                         <label class="rounded-md border border-[#454545] bg-[#242932] py-1 text-center cursor-pointer"><input type="radio" name="audio-mode" class="mr-1">Tắt</label>
                                         <label class="rounded-md border border-[#4f7fd7] bg-[#20375f] py-1 text-center font-semibold cursor-pointer"><input type="radio" name="audio-mode" class="mr-1" checked>Từ</label>
                                         <label class="rounded-md border border-[#454545] bg-[#242932] py-1 text-center cursor-pointer"><input type="radio" name="audio-mode" class="mr-1">Tất cả</label>

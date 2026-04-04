@@ -5,6 +5,7 @@ use semver::Version;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use std::borrow::Cow;
+use std::collections::HashSet;
 use std::sync::Mutex;
 use tauri::{
     AppHandle, Emitter, LogicalSize, Manager, PhysicalPosition, PhysicalSize, Position, Size, State,
@@ -55,6 +56,12 @@ pub struct TranslatePayload {
     pub text: String,
     pub source: String,
     pub target: String,
+}
+
+#[derive(Debug, Clone, Serialize)]
+struct WarmupPayload {
+    source: String,
+    target: String,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -240,6 +247,73 @@ pub async fn translate_via_sidecar(
         .json::<TranslateResponse>()
         .await
         .map_err(|err| format!("sidecar translate decode failed: {err}"))
+}
+
+fn normalize_warmup_source(source: &str) -> String {
+    if source.trim() == "auto" {
+        "en".to_owned()
+    } else {
+        source.trim().to_owned()
+    }
+}
+
+fn warmup_pairs_from_config(config: &AppConfig) -> Vec<(String, String)> {
+    let mut seen = HashSet::<String>::new();
+    let mut pairs: Vec<(String, String)> = Vec::new();
+
+    let popover_source = normalize_warmup_source(&config.source_language);
+    let popover_target = config.target_language.trim().to_owned();
+    if !popover_source.is_empty() && !popover_target.is_empty() {
+        let key = format!("{}->{}", popover_source, popover_target);
+        if seen.insert(key) {
+            pairs.push((popover_source, popover_target));
+        }
+    }
+
+    let quick_source = normalize_warmup_source(&config.quick_translate_source_language);
+    let quick_target = config.quick_translate_target_language.trim().to_owned();
+    if !quick_source.is_empty() && !quick_target.is_empty() {
+        let key = format!("{}->{}", quick_source, quick_target);
+        if seen.insert(key) {
+            pairs.push((quick_source, quick_target));
+        }
+    }
+
+    pairs
+}
+
+fn warmup_languages_changed(previous: &AppConfig, next: &AppConfig) -> bool {
+    previous.source_language != next.source_language
+        || previous.target_language != next.target_language
+        || previous.quick_translate_source_language != next.quick_translate_source_language
+        || previous.quick_translate_target_language != next.quick_translate_target_language
+}
+
+async fn warmup_pair_via_sidecar(client: &Client, source: String, target: String) {
+    let endpoint = std::env::var("SIDECAR_WARMUP_URL").unwrap_or_else(|_| {
+        let host = std::env::var("SIDECAR_HOST").unwrap_or_else(|_| "127.0.0.1".to_owned());
+        let port = std::env::var("SIDECAR_PORT").unwrap_or_else(|_| "49152".to_owned());
+        format!("http://{host}:{port}/warmup")
+    });
+
+    let _ = client
+        .post(endpoint)
+        .json(&WarmupPayload { source, target })
+        .send()
+        .await;
+}
+
+pub fn schedule_language_warmup(client: Client, config: AppConfig) {
+    let pairs = warmup_pairs_from_config(&config);
+    if pairs.is_empty() {
+        return;
+    }
+
+    tauri::async_runtime::spawn(async move {
+        for (source, target) in pairs {
+            warmup_pair_via_sidecar(&client, source, target).await;
+        }
+    });
 }
 
 pub async fn quick_convert_via_sidecar(
@@ -906,15 +980,20 @@ pub async fn save_config(
     config: AppConfig,
 ) -> Result<AppConfig, String> {
     let clean = config.sanitize();
-    {
+    let previous = {
         let mut guard = state
             .config
             .lock()
             .map_err(|_| "config lock poisoned".to_owned())?;
+        let prior = guard.clone();
         *guard = clean.clone();
-    }
+        prior
+    };
     config::save_config_to_disk(&app, &clean)?;
     hotkey::register_hotkeys(&app, &clean)?;
+    if warmup_languages_changed(&previous, &clean) {
+        schedule_language_warmup(state.client.clone(), clean.clone());
+    }
     let _ = app.emit("settings-updated", clean.clone());
     Ok(clean)
 }
