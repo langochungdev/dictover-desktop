@@ -251,7 +251,7 @@
             dom.status.textContent = source;
             setNotes(notes);
         }
-        const loadStatic = async () => { const r = await fetch('./latest.json', { cache: 'no-store' }); if (!r.ok) throw new Error('Static metadata unavailable'); return r.json(); };
+        const loadStatic = async () => { const r = await fetch('/releases/latest.json', { cache: 'no-store' }); if (!r.ok) throw new Error('Static metadata unavailable'); return r.json(); };
         async function bootstrap() { try { render(await loadStatic(), 'Nguồn dữ liệu: web/releases/latest.json'); } catch { dom.subtitle.textContent = 'Không tải được thông tin release'; dom.status.textContent = 'Không đọc được web/releases/latest.json'; setNotes([]); } }
         window.addEventListener('resize', () => { if (latestPayload) render(latestPayload, latestSource); });
         void bootstrap();
