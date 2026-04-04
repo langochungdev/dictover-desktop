@@ -162,6 +162,15 @@ function Update-ChangelogFile {
   Set-Content -Path $changelogPath -Value ($newContent.TrimEnd() + "`r`n")
 }
 
+function Ensure-TagNotExists {
+  param([string]$Tag)
+
+  $existing = (git tag --list $Tag 2>$null | Select-Object -First 1)
+  if ($existing -and $existing.Trim() -eq $Tag) {
+    throw "Tag already exists: $Tag"
+  }
+}
+
 Require-GitRepository
 
 $currentVersion = Get-WebVersion -FilePath $WebVersionPath
@@ -177,10 +186,14 @@ if ($commitSubjects.Count -eq 0) {
 
 $effectiveBump = if ($Bump -eq "auto") { Resolve-BumpLevel -CommitSubjects $commitSubjects } else { $Bump }
 $nextVersion = Get-NextVersion -CurrentVersion $currentVersion -BumpLevel $effectiveBump
+$newTag = "v$nextVersion"
+
+Ensure-TagNotExists -Tag $newTag
 
 if ($DryRun) {
   Write-Host "Current version: $currentVersion"
   Write-Host "Next version: $nextVersion"
+  Write-Host "New tag: $newTag"
   Write-Host "Bump level: $effectiveBump"
   Write-Host "Commits counted: $($commitSubjects.Count)"
   exit 0
@@ -188,20 +201,29 @@ if ($DryRun) {
 
 Update-VersionFiles -Version $nextVersion
 Update-ChangelogFile -Version $nextVersion -CommitSubjects $commitSubjects
+node (Join-Path $RootDir "scripts/sync-web-release.mjs")
+if ($LASTEXITCODE -ne 0) {
+  throw "Failed to sync web release metadata"
+}
 
 Write-Host "Updated version to $nextVersion"
 Write-Host "Updated CHANGELOG.md"
+Write-Host "Synced web/releases/latest.json"
 
-if (-not $SkipBuildInstaller) {
-  pnpm run build:installer:win
-  if ($LASTEXITCODE -ne 0) {
-    throw "Installer build failed with exit code $LASTEXITCODE"
-  }
+git add CHANGELOG.md web/version.json web/releases/latest.json src-tauri/tauri.conf.json src-tauri/Cargo.toml package.json
+if ($LASTEXITCODE -ne 0) {
+  throw "Failed to stage release files"
 }
 
-$installerPath = Join-Path $RootDir ("results/DictOver-{0}.exe" -f $nextVersion)
-if (Test-Path $installerPath) {
-  Write-Host "Installer ready: $installerPath"
-} else {
-  Write-Host "Installer not found yet at: $installerPath"
+git commit -m "chore: release $newTag"
+if ($LASTEXITCODE -ne 0) {
+  throw "Failed to create release commit"
 }
+
+git tag -a $newTag -m "DictOver $newTag"
+if ($LASTEXITCODE -ne 0) {
+  throw "Failed to create tag $newTag"
+}
+
+Write-Host "Release commit and tag created: $newTag"
+Write-Host "Push when ready: git push origin HEAD --tags"

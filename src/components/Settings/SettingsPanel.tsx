@@ -97,6 +97,16 @@ function buildShortcutFromEvent(event: KeyboardEvent<HTMLInputElement>): string 
   return [...modifiers, key].join('+')
 }
 
+const POPOVER_INPUT_LANGUAGES = (() => {
+  const autoLanguage = INPUT_LANGUAGES.find((lang) => lang.code === 'auto')
+  if (!autoLanguage) {
+    return INPUT_LANGUAGES
+  }
+
+  const remaining = INPUT_LANGUAGES.filter((lang) => lang.code !== 'auto')
+  return [autoLanguage, ...remaining]
+})()
+
 export function SettingsPanel({ open, settings, onChange }: SettingsPanelProps) {
   if (!open) {
     return null
@@ -183,7 +193,7 @@ export function SettingsPanel({ open, settings, onChange }: SettingsPanelProps) 
                     value={settings.source_language}
                     onChange={(e) => onChange(setField(settings, 'source_language', e.target.value as AppSettings['source_language']))}
                   >
-                    {INPUT_LANGUAGES.map((lang) => (
+                    {POPOVER_INPUT_LANGUAGES.map((lang) => (
                       <option key={lang.code} value={lang.code}>{lang.label}</option>
                     ))}
                   </select>

@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html lang="vi">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DictOver Releases</title>
+    <meta name="description" content="Releases mới nhất của DictOver và changelog chi tiết">
+    <link rel="icon" type="image/png" href="../icon.png">
+    <style>
+        :root {
+            --bg: #000;
+            --fg: #fff;
+            --line: #4a4a4a;
+            --muted: #b8b8b8
+        }
+
+        * {
+            box-sizing: border-box;
+            scrollbar-width: none
+        }
+
+        *::-webkit-scrollbar {
+            display: none
+        }
+
+        body {
+            margin: 0;
+            height: 100vh;
+            overflow: hidden;
+            background: radial-gradient(circle at 15% 0, #151515 0, transparent 40%), #000;
+            color: var(--fg);
+            font-family: "Consolas", "Courier New", monospace
+        }
+
+        .shell {
+            height: 100vh;
+            display: grid;
+            grid-template-rows: auto auto 1fr auto;
+            gap: 10px;
+            padding: 14px;
+            border: 1px solid var(--line)
+        }
+
+        .row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 10px;
+            flex-wrap: wrap
+        }
+
+        .tag {
+            border: 1px solid var(--line);
+            color: var(--fg);
+            padding: 4px 8px;
+            font-size: 12px;
+            letter-spacing: .08em
+        }
+
+        .title {
+            margin: 0;
+            color: var(--fg);
+            font-size: clamp(22px, 4vw, 34px);
+            line-height: 1
+        }
+
+        .subtitle {
+            margin: 4px 0 0;
+            font-size: 12px;
+            color: var(--muted)
+        }
+
+        .download-home {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            color: var(--fg);
+            text-decoration: none;
+            font-weight: 600;
+            font-size: 12px
+        }
+
+        .download-home:hover {
+            opacity: .7
+        }
+
+        .download-home svg {
+            width: 16px;
+            height: 16px
+        }
+
+        .download-home:focus-visible {
+            outline: 2px solid #fff;
+            outline-offset: 2px
+        }
+
+        .panel {
+            border: 1px solid var(--line);
+            padding: 10px;
+            height: 100%;
+            overflow: hidden;
+            display: grid;
+            grid-template-rows: auto auto 1fr
+        }
+
+        .meta {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+            margin-bottom: 8px
+        }
+
+        .pill {
+            border: 1px solid var(--line);
+            padding: 4px 8px;
+            font-size: 11px;
+            color: var(--muted)
+        }
+
+        .notes-title {
+            margin: 0 0 8px;
+            color: var(--fg);
+            font-size: 12px;
+            text-transform: uppercase;
+            letter-spacing: .08em
+        }
+
+        .notes {
+            margin: 0;
+            padding-left: 16px;
+            line-height: 1.42;
+            columns: 2;
+            column-gap: 20px;
+            overflow: hidden
+        }
+
+        .notes li {
+            break-inside: avoid;
+            margin: 0 0 4px;
+            font-size: 12px
+        }
+
+        .footer {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 10px;
+            flex-wrap: wrap;
+            font-size: 11px;
+            color: var(--muted)
+        }
+
+        .link {
+            color: var(--fg);
+            text-decoration: none
+        }
+
+        .link:hover {
+            text-decoration: underline
+        }
+
+        @media (max-width:820px) {
+            .notes {
+                columns: 1
+            }
+
+            .shell {
+                padding: 10px;
+                gap: 8px
+            }
+
+            .download-home {
+                font-size: 11px
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <main class="shell">
+        <div class="row">
+            <span class="tag">DICTOVER / RELEASES</span>
+            <a id="downloadLink" href="https://github.com/langochungdev/dictover-desktop/releases/latest" target="_blank" rel="noopener noreferrer" class="download-home">
+                <svg fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24" aria-hidden="true">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path>
+                </svg>
+                <span>Download</span>
+            </a>
+        </div>
+        <header>
+            <h1 id="title" class="title">DictOver v--</h1>
+            <p id="subtitle" class="subtitle">Đang tải changelog mới nhất...</p>
+        </header>
+        <section class="panel">
+            <div class="meta">
+                <span id="versionPill" class="pill">Version: --</span>
+                <span id="datePill" class="pill">Ngày phát hành: --</span>
+            </div>
+            <h2 class="notes-title">Core Changes</h2>
+            <ul id="notesList" class="notes"></ul>
+        </section>
+        <footer class="footer">
+            <span id="status">Nguồn dữ liệu: --</span>
+            <a id="releaseLink" class="link" href="https://github.com/langochungdev/dictover-desktop/releases/latest" target="_blank" rel="noopener noreferrer">Go to release</a>
+        </footer>
+    </main>
+    <script>
+        const RELEASES_API = 'https://api.github.com/repos/langochungdev/dictover-desktop/releases?per_page=6';
+        const RELEASE_BASE = 'https://github.com/langochungdev/dictover-desktop/releases';
+        const dom = { title: document.getElementById('title'), subtitle: document.getElementById('subtitle'), versionPill: document.getElementById('versionPill'), datePill: document.getElementById('datePill'), downloadLink: document.getElementById('downloadLink'), notesList: document.getElementById('notesList'), status: document.getElementById('status'), releaseLink: document.getElementById('releaseLink') };
+        let latestPayload = null; let latestSource = '';
+        const text = (v, f = '--') => typeof v === 'string' && v.trim() ? v.trim() : f;
+        const parseVersion = (v) => typeof v === 'string' && /^\d+\.\d+\.\d+$/.test(v.trim()) ? v.trim() : '';
+        const notesFromBody = (b) => typeof b === 'string' ? b.split('\n').map((l) => l.trim()).filter((l) => /^[-*]\s+/.test(l)).map((l) => l.replace(/^[-*]\s+/, '')) : [];
+        function maxNoteCount() { const isMobile = window.innerWidth < 820; const reserve = isMobile ? 310 : 280; const line = 19; const rows = Math.max(5, Math.floor((window.innerHeight - reserve) / line)); return isMobile ? rows : rows * 2; }
+        function setNotes(notes) { dom.notesList.textContent = ''; const arr = Array.isArray(notes) ? notes : []; if (!arr.length) { const li = document.createElement('li'); li.textContent = 'Chưa có ghi chú phát hành.'; dom.notesList.appendChild(li); return; } const max = maxNoteCount(); const shown = arr.slice(0, max); shown.forEach((note) => { const li = document.createElement('li'); li.textContent = note; dom.notesList.appendChild(li); }); if (arr.length > max) { const li = document.createElement('li'); li.textContent = `+ ${arr.length - max} thay đổi khác...`; dom.notesList.appendChild(li); } }
+        async function applyVersionFallback(link) { try { const r = await fetch('../version.json', { cache: 'no-store' }); if (!r.ok) { link.href = `${RELEASE_BASE}/latest`; return; } const p = await r.json(); const v = parseVersion(p?.version); if (!v) { link.href = `${RELEASE_BASE}/latest`; return; } link.href = `${RELEASE_BASE}/download/v${v}/DictOver-${v}.zip`; } catch { link.href = `${RELEASE_BASE}/latest`; } }
+        async function resolveLatestDownloadLink() { const link = dom.downloadLink; if (!link) return; await applyVersionFallback(link); try { const r = await fetch(RELEASES_API, { headers: { Accept: 'application/vnd.github+json' } }); if (!r.ok) return; const rel = await r.json(); if (!Array.isArray(rel)) return; const latest = rel.find((x) => Array.isArray(x?.assets) && x.assets.length > 0); if (!latest) return; const zip = latest.assets.find((a) => /^DictOver-.*\.zip$/i.test(typeof a?.name === 'string' ? a.name : '')); if (zip?.browser_download_url) link.href = zip.browser_download_url; else if (latest?.html_url) link.href = latest.html_url; } catch { return; } }
+        function render(payload, source) { latestPayload = payload; latestSource = source; const version = text(payload?.version || payload?.tag_name?.replace(/^v/i, '')); const raw = payload?.publishedAt || payload?.published_at || ''; const date = raw ? raw.slice(0, 10) : '--'; const notes = Array.isArray(payload?.notes) ? payload.notes : notesFromBody(payload?.body); dom.title.textContent = `DictOver v${version}`; dom.subtitle.textContent = 'Release mới nhất'; dom.versionPill.textContent = `Version: v${version}`; dom.datePill.textContent = `Ngày phát hành: ${date}`; dom.releaseLink.href = payload?.releaseUrl || payload?.html_url || `${RELEASE_BASE}/latest`; dom.status.textContent = source; setNotes(notes); }
+        const loadStatic = async () => { const r = await fetch('./latest.json', { cache: 'no-store' }); if (!r.ok) throw new Error('Static metadata unavailable'); return r.json(); };
+        const loadGithub = async () => { const r = await fetch(RELEASES_API, { headers: { Accept: 'application/vnd.github+json' } }); if (!r.ok) throw new Error('GitHub API unavailable'); const rel = await r.json(); if (!Array.isArray(rel)) throw new Error('Invalid release payload'); const latest = rel.find((x) => !x?.draft && Array.isArray(x?.assets) && x.assets.length > 0); if (!latest) throw new Error('No release found'); const zip = latest.assets.find((a) => /^DictOver-.*\.zip$/i.test(typeof a?.name === 'string' ? a.name : '')) || latest.assets.find((a) => /\.zip$/i.test(typeof a?.name === 'string' ? a.name : '')); return { version: text(latest.tag_name, 'v--').replace(/^v/i, ''), publishedAt: latest.published_at, notes: notesFromBody(latest.body), downloadUrl: zip?.browser_download_url || latest.html_url, html_url: latest.html_url }; };
+        async function bootstrap() { void resolveLatestDownloadLink(); try { render(await loadStatic(), 'Nguồn dữ liệu: web/releases/latest.json'); return; } catch { } try { render(await loadGithub(), 'Nguồn dữ liệu: GitHub API'); } catch { dom.subtitle.textContent = 'Không tải được thông tin release'; dom.status.textContent = 'Hãy thử lại sau hoặc mở GitHub Releases'; setNotes([]); } }
+        window.addEventListener('resize', () => { if (latestPayload) render(latestPayload, latestSource); });
+        void bootstrap();
+    </script>
+</body>
+
+</html>

@@ -49,6 +49,40 @@ interface HotkeyTracePayload {
 interface QuickConvertOpenedPayload {
   text: string
   shortcut: string
+  position_mode?: string
+}
+
+type QuickConvertPopupPositionMode = AppSettings['quick_convert_popup_position']
+
+function normalizeQuickConvertPopupPosition(
+  value: string | undefined,
+  fallback: QuickConvertPopupPositionMode,
+): QuickConvertPopupPositionMode {
+  const raw = String(value || '').trim()
+  const normalized =
+    raw === 'left-middle'
+      ? 'middle-left'
+      : raw === 'right-middle'
+        ? 'middle-right'
+        : raw === 'center'
+          ? 'middle-center'
+          : raw
+
+  if (
+    normalized === 'top-left' ||
+    normalized === 'top-center' ||
+    normalized === 'top-right' ||
+    normalized === 'middle-left' ||
+    normalized === 'middle-center' ||
+    normalized === 'middle-right' ||
+    normalized === 'bottom-left' ||
+    normalized === 'bottom-center' ||
+    normalized === 'bottom-right'
+  ) {
+    return normalized
+  }
+
+  return fallback
 }
 
 interface UpdateAvailablePayload {
@@ -1146,6 +1180,10 @@ function QuickConvertWindow() {
   const [result, setResult] = useState<QuickConvertResult | null>(null)
   const [focusToken, setFocusToken] = useState(0)
   const [loading, setLoading] = useState(false)
+  const [popupPositionMode, setPopupPositionMode] =
+    useState<QuickConvertPopupPositionMode>(
+      DEFAULT_SETTINGS.quick_convert_popup_position,
+    )
   const settingsRef = useRef<AppSettings>(DEFAULT_SETTINGS)
   const saveSequenceRef = useRef(0)
   const lastHotkeyEventRef = useRef({ copyAt: 0, clearAt: 0 })
@@ -1188,6 +1226,22 @@ function QuickConvertWindow() {
   useEffect(() => {
     settingsRef.current = settings
   }, [settings])
+
+  useEffect(() => {
+    const nextPosition = normalizeQuickConvertPopupPosition(
+      settings.quick_convert_popup_position,
+      DEFAULT_SETTINGS.quick_convert_popup_position,
+    )
+    setPopupPositionMode(nextPosition)
+  }, [settings.quick_convert_popup_position])
+
+  useEffect(() => {
+    appendDebugLog(
+      'quick-convert',
+      'Quick convert layout mode',
+      `mode=${popupPositionMode} top=${popupPositionMode.startsWith('top-') ? 1 : 0} bottom=${popupPositionMode.startsWith('bottom-') ? 1 : 0}`,
+    )
+  }, [popupPositionMode])
 
   useEffect(() => {
     let mounted = true
@@ -1309,6 +1363,11 @@ function QuickConvertWindow() {
         const unlistenQuickConvertOpened = await listen<QuickConvertOpenedPayload>('quick-convert-opened', (event) => {
           const seedText = event.payload.text ?? ''
           const hasSeed = seedText.trim().length > 0
+          const resolvedPosition = normalizeQuickConvertPopupPosition(
+            event.payload.position_mode,
+            settingsRef.current.quick_convert_popup_position,
+          )
+          setPopupPositionMode(resolvedPosition)
           if (seedText.trim().length > 0) {
             setInputValue(seedText)
           }
@@ -1318,7 +1377,7 @@ function QuickConvertWindow() {
           appendDebugLog(
             'quick-convert',
             'Quick convert opened',
-            `shortcut=${event.payload.shortcut || 'unknown'} seedLen=${seedText.trim().length} hasSeed=${hasSeed ? 1 : 0} preserveInput=${hasSeed ? 0 : 1}`,
+            `shortcut=${event.payload.shortcut || 'unknown'} seedLen=${seedText.trim().length} hasSeed=${hasSeed ? 1 : 0} preserveInput=${hasSeed ? 0 : 1} payloadPos=${event.payload.position_mode || 'unknown'} appliedPos=${resolvedPosition}`,
           )
           appendDebugLog(
             'quick-convert',
@@ -1539,7 +1598,7 @@ function QuickConvertWindow() {
         loading={loading}
         focusToken={focusToken}
         copy={copy}
-        positionMode={settings.quick_convert_popup_position}
+        positionMode={popupPositionMode}
         sourceLanguage={settings.quick_translate_source_language}
         targetLanguage={settings.quick_translate_target_language}
         inputValue={inputValue}

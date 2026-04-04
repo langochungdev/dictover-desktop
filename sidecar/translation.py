@@ -300,6 +300,38 @@ def _build_word_data(translated_word: str, target: str) -> dict[str, Any] | None
     }
 
 
+def _resolve_english_anchor_word(
+    source_text: str,
+    translated_text: str,
+    source_lang: str,
+    target_lang: str,
+) -> str:
+    normalized_source = normalize_lang(source_lang)
+    normalized_target = normalize_lang(target_lang)
+
+    if normalized_source == "en":
+        source_word = _normalize_word_candidate(source_text)
+        if source_word and is_single_word_text(source_word):
+            return source_word
+
+    if normalized_target == "en":
+        translated_word = _normalize_word_candidate(translated_text)
+        if translated_word and is_single_word_text(translated_word):
+            return translated_word
+        return ""
+
+    try:
+        english_hint = translate(translated_text, normalized_target, "en").result
+    except Exception:
+        return ""
+
+    english_word = _normalize_word_candidate(english_hint)
+    if english_word and is_single_word_text(english_word):
+        return english_word
+
+    return ""
+
+
 def quick_convert(text: str, source: str, target: str) -> dict:
     cleaned = (text or "").strip()
     if not cleaned:
@@ -313,15 +345,30 @@ def quick_convert(text: str, source: str, target: str) -> dict:
         }
 
     resolved_source = detect_language(cleaned) if source == "auto" else source
+    normalized_source = normalize_lang(resolved_source)
+    normalized_target = normalize_lang(target)
 
     if is_single_word_text(cleaned):
         translated = _choose_single_word_translation(cleaned, resolved_source, target)
     else:
         translated = translate(cleaned, source, target)
 
-    word_data = _build_word_data(translated.result, target)
+    use_english_metadata = normalized_source == "en" or normalized_target == "en"
+    word_data: dict[str, Any] | None = None
 
-    if not word_data:
+    if use_english_metadata:
+        english_anchor_word = _resolve_english_anchor_word(
+            cleaned,
+            translated.result,
+            resolved_source,
+            target,
+        )
+        if english_anchor_word:
+            word_data = _build_word_data(english_anchor_word, "en")
+    else:
+        word_data = _build_word_data(translated.result, normalized_target)
+
+    if not word_data and not use_english_metadata:
         try:
             english_hint = translate(translated.result, target, "en").result
             if is_single_word_text(_normalize_word_candidate(english_hint)):

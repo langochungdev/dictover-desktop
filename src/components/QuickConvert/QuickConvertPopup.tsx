@@ -90,44 +90,17 @@ export function QuickConvertPopup({
   }, [wordData?.phonetic]);
 
   const partOfSpeech = String(wordData?.part_of_speech || "").trim();
-
-  const normalizedOutput = useMemo(() => {
-    return String(outputValue || "")
-      .trim()
-      .replace(/^\p{P}+/gu, "")
-      .replace(/\p{P}+$/gu, "")
-      .toLowerCase();
-  }, [outputValue]);
-
-  const normalizedWordInput = useMemo(() => {
-    return String(wordData?.input || "")
-      .trim()
-      .replace(/^\p{P}+/gu, "")
-      .replace(/\p{P}+$/gu, "")
-      .toLowerCase();
-  }, [wordData?.input]);
-
-  const isSingleWordOutput = useMemo(() => {
-    const text = String(outputValue || "").trim();
-    if (!text || /[\n]/.test(text)) {
-      return false;
-    }
-
-    const normalized = text
-      .replace(/[.!?;:。,、！？；：]+/g, " ")
-      .trim();
-    if (!normalized) {
-      return false;
-    }
-
-    return normalized.split(/\s+/).filter(Boolean).length === 1;
-  }, [outputValue]);
+  const hasWordMetaDetails = Boolean(
+    normalizedPhonetic
+      || partOfSpeech
+      || wordData?.audio_url
+      || relatedTerms.length > 0,
+  );
 
   const showWordMetaLayout = Boolean(
     result?.kind === "word"
       && wordData
-      && isSingleWordOutput
-      && (!normalizedWordInput || normalizedWordInput === normalizedOutput),
+      && hasWordMetaDetails,
   );
 
   const { audioPlaying, playAudio, stopAudio } = useSharedAudioPlayer({
@@ -301,11 +274,173 @@ export function QuickConvertPopup({
   const portalTarget = document.body;
   const isTopPosition = positionMode.startsWith("top-");
   const isBottomPosition = positionMode.startsWith("bottom-");
+  const positionLayoutClass = isBottomPosition
+    ? " is-layout-bottom"
+    : isTopPosition
+      ? " is-layout-top"
+      : " is-layout-middle";
   const verticalAnchorClass = isTopPosition
     ? " is-top-anchor"
     : isBottomPosition
       ? " is-bottom-anchor"
       : " is-middle-anchor";
+
+  const languageRow = (
+    <div
+      ref={languageRowRef}
+      className="apl-quick-convert-language-row apl-quick-convert-language-row--minimal"
+    >
+      <select
+        className="apl-quick-convert-lang-select"
+        aria-label={copy.quickInputLanguage}
+        value={sourceLanguage}
+        style={{ width: `${selectWidthCh}ch` }}
+        onChange={(event) =>
+          onSourceLanguageChange(event.target.value as InputLanguageCode)
+        }
+      >
+        {INPUT_LANGUAGES.map((lang) => (
+          <option key={lang.code} value={lang.code}>
+            {lang.label}
+          </option>
+        ))}
+      </select>
+
+      <button
+        type="button"
+        className="apl-settings-swap-languages apl-settings-swap-languages--minimal"
+        aria-label={copy.swapLanguages}
+        onClick={onSwapLanguages}
+      >
+        ⇄
+      </button>
+
+      <select
+        className="apl-quick-convert-lang-select"
+        aria-label={copy.quickOutputLanguage}
+        value={targetLanguage}
+        style={{ width: `${selectWidthCh}ch` }}
+        onChange={(event) =>
+          onTargetLanguageChange(event.target.value as OutputLanguageCode)
+        }
+      >
+        {OUTPUT_LANGUAGES.map((lang) => (
+          <option key={lang.code} value={lang.code}>
+            {lang.label}
+          </option>
+        ))}
+      </select>
+    </div>
+  );
+
+  const inputEditor = (
+    <textarea
+      ref={inputRef}
+      className="apl-quick-convert-input"
+      aria-label={copy.quickConvertInputLabel}
+      value={inputValue}
+      onChange={(event) => onInputValueChange(event.target.value)}
+      onKeyDown={(event) => {
+        if (event.key === "Enter" && !event.shiftKey) {
+          event.preventDefault();
+          onSubmit();
+          window.requestAnimationFrame(() => {
+            inputRef.current?.focus();
+          });
+        }
+      }}
+      spellCheck={false}
+      autoCorrect="off"
+      autoCapitalize="off"
+      autoFocus
+    />
+  );
+
+  const resultCard = hasOutput ? (
+    <section className="apl-quick-convert-result-card" aria-label={copy.quickConvertOutputLabel}>
+      <div className="apl-quick-convert-result-primary">
+        {showWordMetaLayout ? (
+          <div className="apl-quick-convert-result-head">
+            <p className="apl-quick-convert-result-word">{outputValue}</p>
+            {normalizedPhonetic && (
+              <span className="apl-quick-convert-result-phonetic">{normalizedPhonetic}</span>
+            )}
+            {partOfSpeech && (
+              <span className="apl-quick-convert-result-pos">{partOfSpeech}</span>
+            )}
+            {wordData && (
+              <button
+                type="button"
+                className="apl-quick-convert-audio-btn"
+                onClick={playAudio}
+                aria-label="Play pronunciation"
+                aria-pressed={audioPlaying}
+              >
+                <AudioIcon />
+              </button>
+            )}
+          </div>
+        ) : (
+          <p className="apl-quick-convert-result-text">{outputValue}</p>
+        )}
+      </div>
+
+      {showWordMetaLayout && relatedTerms.length > 0 && (
+        <>
+          <div className="apl-quick-convert-result-divider" aria-hidden="true" />
+
+          <div className="apl-quick-convert-result-secondary">
+            <p className="apl-quick-convert-related-list">{relatedTerms.join(" · ")}</p>
+          </div>
+        </>
+      )}
+    </section>
+  ) : null;
+
+  useEffect(() => {
+    if (!open || typeof window === "undefined") {
+      return;
+    }
+
+    const frameId = window.requestAnimationFrame(() => {
+      const popup = popupRef.current;
+      if (!popup) {
+        appendDebugLog(
+          "quick-convert",
+          "Quick convert layout snapshot",
+          `pos=${positionMode} top=${isTopPosition ? 1 : 0} bottom=${isBottomPosition ? 1 : 0} popup=missing`,
+        );
+        return;
+      }
+
+      const rect = popup.getBoundingClientRect();
+      const computed = window.getComputedStyle(popup);
+      const childOrder = Array.from(popup.children)
+        .map((node) => {
+          const el = node as HTMLElement;
+          if (el.classList.contains("apl-quick-convert-language-row")) {
+            return "lang";
+          }
+          if (el.classList.contains("apl-quick-convert-input")) {
+            return "input";
+          }
+          if (el.classList.contains("apl-quick-convert-result-card")) {
+            return "result";
+          }
+          return "other";
+        })
+        .join(">");
+      appendDebugLog(
+        "quick-convert",
+        "Quick convert layout snapshot",
+        `pos=${positionMode} top=${isTopPosition ? 1 : 0} bottom=${isBottomPosition ? 1 : 0} class=${popup.className} order=${childOrder} cssTop=${computed.top} cssBottom=${computed.bottom} rectTop=${Math.round(rect.top)} rectBottom=${Math.round(rect.bottom)} vh=${window.innerHeight}`,
+      );
+    });
+
+    return () => {
+      window.cancelAnimationFrame(frameId);
+    };
+  }, [isBottomPosition, isTopPosition, open, positionMode]);
 
   return createPortal(
     <>
@@ -321,118 +456,24 @@ export function QuickConvertPopup({
 
       <section
         ref={popupRef}
-        className={`apl-quick-convert-popup apl-quick-convert-popup--minimal${verticalAnchorClass}${isBottomPosition ? " is-bottom-layout" : ""}${loading ? " is-loading" : ""}`}
+        className={`apl-quick-convert-popup apl-quick-convert-popup--minimal${verticalAnchorClass}${positionLayoutClass}${isBottomPosition ? " is-bottom-layout" : ""}${loading ? " is-loading" : ""}`}
         role="dialog"
         aria-modal="true"
         aria-label={copy.quickConvertPopupTitle}
         aria-busy={loading}
       >
-        <div
-          ref={languageRowRef}
-          className="apl-quick-convert-language-row apl-quick-convert-language-row--minimal"
-        >
-          <select
-            className="apl-quick-convert-lang-select"
-            aria-label={copy.quickInputLanguage}
-            value={sourceLanguage}
-            style={{ width: `${selectWidthCh}ch` }}
-            onChange={(event) =>
-              onSourceLanguageChange(event.target.value as InputLanguageCode)
-            }
-          >
-            {INPUT_LANGUAGES.map((lang) => (
-              <option key={lang.code} value={lang.code}>
-                {lang.label}
-              </option>
-            ))}
-          </select>
-
-          <button
-            type="button"
-            className="apl-settings-swap-languages apl-settings-swap-languages--minimal"
-            aria-label={copy.swapLanguages}
-            onClick={onSwapLanguages}
-          >
-            ⇄
-          </button>
-
-          <select
-            className="apl-quick-convert-lang-select"
-            aria-label={copy.quickOutputLanguage}
-            value={targetLanguage}
-            style={{ width: `${selectWidthCh}ch` }}
-            onChange={(event) =>
-              onTargetLanguageChange(event.target.value as OutputLanguageCode)
-            }
-          >
-            {OUTPUT_LANGUAGES.map((lang) => (
-              <option key={lang.code} value={lang.code}>
-                {lang.label}
-              </option>
-            ))}
-          </select>
-        </div>
-
-        <textarea
-          ref={inputRef}
-          className="apl-quick-convert-input"
-          aria-label={copy.quickConvertInputLabel}
-          value={inputValue}
-          onChange={(event) => onInputValueChange(event.target.value)}
-          onKeyDown={(event) => {
-            if (event.key === "Enter" && !event.shiftKey) {
-              event.preventDefault();
-              onSubmit();
-              window.requestAnimationFrame(() => {
-                inputRef.current?.focus();
-              });
-            }
-          }}
-          spellCheck={false}
-          autoCorrect="off"
-          autoCapitalize="off"
-          autoFocus
-        />
-
-        {hasOutput && (
-          <section className="apl-quick-convert-result-card" aria-label={copy.quickConvertOutputLabel}>
-            <div className="apl-quick-convert-result-primary">
-              {showWordMetaLayout ? (
-                <div className="apl-quick-convert-result-head">
-                  <p className="apl-quick-convert-result-word">{outputValue}</p>
-                  {normalizedPhonetic && (
-                    <span className="apl-quick-convert-result-phonetic">{normalizedPhonetic}</span>
-                  )}
-                  {partOfSpeech && (
-                    <span className="apl-quick-convert-result-pos">{partOfSpeech}</span>
-                  )}
-                  {wordData && (
-                    <button
-                      type="button"
-                      className="apl-quick-convert-audio-btn"
-                      onClick={playAudio}
-                      aria-label="Play pronunciation"
-                      aria-pressed={audioPlaying}
-                    >
-                      <AudioIcon />
-                    </button>
-                  )}
-                </div>
-              ) : (
-                <p className="apl-quick-convert-result-text">{outputValue}</p>
-              )}
-            </div>
-
-            {showWordMetaLayout && relatedTerms.length > 0 && (
-              <>
-                <div className="apl-quick-convert-result-divider" aria-hidden="true" />
-
-                <div className="apl-quick-convert-result-secondary">
-                  <p className="apl-quick-convert-related-list">{relatedTerms.join(" · ")}</p>
-                </div>
-              </>
-            )}
-          </section>
+        {isBottomPosition ? (
+          <>
+            {resultCard}
+            {inputEditor}
+            {languageRow}
+          </>
+        ) : (
+          <>
+            {languageRow}
+            {inputEditor}
+            {resultCard}
+          </>
         )}
       </section>
     </>,

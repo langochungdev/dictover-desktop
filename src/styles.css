@@ -417,6 +417,11 @@ button {
     overflow: hidden;
 }
 
+.apl-quick-convert-popup--minimal.is-top-anchor,
+.apl-quick-convert-popup--minimal.is-bottom-anchor {
+    max-height: 100vh;
+}
+
 .apl-quick-convert-popup.is-top-anchor {
     top: 0;
     bottom: auto;
@@ -429,12 +434,28 @@ button {
     transform: translateX(-50%);
 }
 
-.apl-quick-convert-popup.is-bottom-layout .apl-quick-convert-language-row {
-    order: 2;
+.apl-quick-convert-popup.is-top-anchor,
+.apl-quick-convert-popup.is-middle-anchor {
+    align-content: start;
 }
 
-.apl-quick-convert-popup.is-bottom-layout .apl-quick-convert-input {
-    order: 1;
+.apl-quick-convert-popup.is-bottom-layout {
+    align-content: end;
+}
+
+.apl-quick-convert-popup.is-layout-top,
+.apl-quick-convert-popup.is-layout-middle {
+    display: grid;
+    gap: 4px;
+    align-content: start;
+}
+
+.apl-quick-convert-popup.is-layout-bottom {
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-end;
+    gap: 4px;
+    align-content: stretch;
 }
 
 .apl-quick-convert-language-row {
@@ -457,8 +478,21 @@ button {
     max-width: calc(100% - 8px);
 }
 
+.apl-quick-convert-popup.is-top-anchor .apl-quick-convert-language-row--minimal {
+    margin: 0 auto 0;
+}
+
+.apl-quick-convert-popup.is-middle-anchor .apl-quick-convert-language-row--minimal {
+    margin: 0 auto 0;
+}
+
 .apl-quick-convert-popup.is-bottom-layout .apl-quick-convert-language-row--minimal {
-    margin: 0 auto 4px;
+    margin: 0 auto 0;
+}
+
+.apl-quick-convert-popup.is-bottom-layout .apl-quick-convert-input,
+.apl-quick-convert-popup.is-bottom-layout .apl-quick-convert-result-card {
+    margin-bottom: 0;
 }
 
 .apl-quick-convert-lang-select {
@@ -1777,10 +1811,21 @@ button {
     transition: background 0.15s, color 0.15s;
 }
 
+.apl-settings-swap-languages.apl-settings-swap-languages--minimal {
+    color: #ffffff;
+    border-color: rgba(255, 255, 255, 0.32);
+    background: rgba(255, 255, 255, 0.08);
+}
+
 @media (hover: hover) {
     .apl-settings-swap-languages:hover {
         background: var(--apl-settings-accent-soft);
         color: var(--apl-settings-accent);
+    }
+
+    .apl-settings-swap-languages.apl-settings-swap-languages--minimal:hover {
+        color: #ffffff;
+        background: rgba(255, 255, 255, 0.16);
     }
 }
 

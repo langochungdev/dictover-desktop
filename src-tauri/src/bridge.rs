@@ -204,6 +204,7 @@ struct OcrOverlayBackgroundPayload {
 struct QuickConvertOpenedPayload {
     text: String,
     shortcut: String,
+    position_mode: String,
 }
 
 const OCR_OVERLAY_WINDOW_LABEL: &str = "ocr-overlay";
@@ -269,20 +270,32 @@ pub async fn quick_convert_via_sidecar(
         .map_err(|err| format!("sidecar quick-convert compat translate failed: {err}"))?;
 
         let translated_word = translate.result.trim().to_owned();
-        let translated_single_word = !translated_word.is_empty()
-            && count_words(&translated_word) == 1
-            && !contains_sentence_punctuation(&translated_word)
-            && count_non_whitespace_chars(&translated_word) <= 48;
+        let source_is_english = is_english_language_code(&source);
+        let target_is_english = is_english_language_code(&target);
+        let use_english_metadata = source_is_english || target_is_english;
+
+        let metadata_lang = if use_english_metadata {
+            "en".to_owned()
+        } else {
+            target.clone()
+        };
+
+        let metadata_word = if source_is_english {
+            text.clone()
+        } else {
+            translated_word.clone()
+        };
+        let metadata_single_word = is_single_word_candidate(&metadata_word);
 
         let mut word_data: Option<QuickConvertWordData> = None;
-        if translated_single_word {
+        if metadata_single_word {
             let (synonyms, related, sounds_like) =
-                query_datamuse_word_data(client, &translated_word).await;
+                query_datamuse_word_data(client, &metadata_word).await;
             let lookup = lookup_via_sidecar(
                 client,
                 LookupPayload {
-                    word: translated_word.clone(),
-                    source_lang: target.clone(),
+                    word: metadata_word.clone(),
+                    source_lang: metadata_lang.clone(),
                 },
             )
             .await
@@ -302,9 +315,9 @@ pub async fn quick_convert_via_sidecar(
             let mut audio_url = lookup.as_ref().and_then(|item| item.audio_url.clone());
             let mut audio_lang = lookup.as_ref().and_then(|item| item.audio_lang.clone());
             if audio_url.is_none() {
-                audio_url = build_google_tts_url(&translated_word, &target);
+                audio_url = build_google_tts_url(&metadata_word, &metadata_lang);
                 if audio_url.is_some() {
-                    audio_lang = Some(target.clone());
+                    audio_lang = Some(metadata_lang.clone());
                 }
             }
             let has_extra = phonetic.is_some()
@@ -316,7 +329,7 @@ pub async fn quick_convert_via_sidecar(
 
             if has_extra {
                 word_data = Some(QuickConvertWordData {
-                    input: translated_word,
+                    input: metadata_word,
                     phonetic,
                     part_of_speech,
                     audio_url,
@@ -537,6 +550,21 @@ fn count_non_whitespace_chars(input: &str) -> usize {
     input.chars().filter(|ch| !ch.is_whitespace()).count()
 }
 
+fn is_english_language_code(value: &str) -> bool {
+    matches!(
+        value.trim().to_ascii_lowercase().as_str(),
+        "en" | "en-us" | "en-gb"
+    )
+}
+
+fn is_single_word_candidate(input: &str) -> bool {
+    let trimmed = input.trim();
+    !trimmed.is_empty()
+        && count_words(trimmed) == 1
+        && !contains_sentence_punctuation(trimmed)
+        && count_non_whitespace_chars(trimmed) <= 48
+}
+
 fn is_cjk_char(ch: char) -> bool {
     matches!(
         ch,
@@ -732,7 +760,7 @@ fn resolve_quick_convert_position(
         return PhysicalPosition::new(24, 24);
     };
 
-    let horizontal_margin = 12;
+    let horizontal_margin = 0;
     let vertical_margin = 0;
     let mon_pos = monitor.position();
     let mon_size = monitor.size();
@@ -808,6 +836,7 @@ pub fn show_quick_convert_window_with_seed(
     let payload = QuickConvertOpenedPayload {
         text: seed_text.unwrap_or_default(),
         shortcut: shortcut.unwrap_or_default(),
+        position_mode: position_mode.to_owned(),
     };
     app.emit_to("quick-convert", "quick-convert-opened", payload)
         .map_err(|err| format!("emit quick convert opened failed: {err}"))?;
