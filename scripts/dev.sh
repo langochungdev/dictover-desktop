@@ -40,4 +40,4 @@ if [[ ! -f "$OCR_FONT_BUNDLE_PATH" ]]; then
 fi
 
 echo "[4/4] Start Tauri dev"
-SIDECAR_PORT="$SIDECAR_PORT" npm run tauri dev
+SIDECAR_PORT="$SIDECAR_PORT" VITE_SIDECAR_PORT="$SIDECAR_PORT" VITE_SIDECAR_HOST="127.0.0.1" npm run tauri dev

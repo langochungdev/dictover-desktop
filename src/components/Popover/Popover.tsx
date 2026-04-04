@@ -8,11 +8,12 @@ import type { AutoPlayAudioMode, PopoverOpenPanelMode } from '@/types/settings'
 import type { OutputLanguageCode } from '@/constants/languages'
 import type { DictionaryResult } from '@/services/dictionary'
 import type { TranslateResult } from '@/services/translate'
-import { normalizeText, sanitizeMarkup, normalizePhonetic, lookupPrimary, resolveImageQuery, buildAlternativeAudioUrl } from '@/components/Popover/popover.utils'
+import { normalizeText, sanitizeMarkup, normalizePhonetic, lookupPrimary, resolveImageQuery } from '@/components/Popover/popover.utils'
 import { AudioIcon, ImageIcon, SettingsIcon } from '@/components/Popover/PopoverIcons'
 import { SubPanel } from '@/components/Popover/SubPanel'
 import { ImageSubPanel } from '@/components/Popover/ImageSubPanel'
 import { usePopoverResize } from '@/hooks/usePopoverResize'
+import { useSharedAudioPlayer } from '@/hooks/useSharedAudioPlayer'
 import type { SelectionAnchor } from '@/types/selectionAnchor'
 import type { PopoverTrigger } from '@/hooks/usePopover'
 
@@ -43,70 +44,6 @@ const CONTENT_CHAR_WIDTH_PX = 7
 const POPOVER_BASE_CONTENT_PADDING_PX = 84
 const LOOKUP_DEFINITION_DENSITY_WEIGHT = 0.24
 const LOOKUP_DEFINITION_DENSITY_CAP = 64
-
-function useAudioPlayer(dictionary: DictionaryResult | null, selectedText: string) {
-  const [audioPlaying, setAudioPlaying] = useState(false)
-  const [audioError, setAudioError] = useState<string | null>(null)
-  const audioRef = useRef<HTMLAudioElement | null>(null)
-
-  const stopAudio = useCallback(() => {
-    if (audioRef.current) {
-      audioRef.current.pause()
-      audioRef.current.currentTime = 0
-      audioRef.current = null
-    }
-    if (typeof window !== 'undefined' && window.speechSynthesis) {
-      window.speechSynthesis.cancel()
-    }
-    setAudioPlaying(false)
-  }, [])
-
-  useEffect(() => () => { stopAudio() }, [stopAudio])
-
-  const startAudio = useCallback(async () => {
-    setAudioError(null)
-    stopAudio()
-
-    const source = String(dictionary?.audio_url || '').trim()
-    const fallbackWord = normalizeText(dictionary?.word || selectedText)
-    const fallbackLang = normalizeText(dictionary?.audio_lang || 'en')
-
-    const tryPlayUrl = async (url: string): Promise<boolean> => {
-      if (!url) return false
-      try {
-        const audio = new Audio(url)
-        audioRef.current = audio
-        audio.onended = () => setAudioPlaying(false)
-        audio.onerror = () => setAudioPlaying(false)
-        setAudioPlaying(true)
-        await audio.play()
-        return true
-      } catch { setAudioPlaying(false); return false }
-    }
-
-    if (source) {
-      if (await tryPlayUrl(source)) return
-      const alt = buildAlternativeAudioUrl(source)
-      if (alt && await tryPlayUrl(alt)) return
-    }
-
-    const text = normalizeText(fallbackWord)
-    if (text && typeof window !== 'undefined' && window.speechSynthesis) {
-      const u = new SpeechSynthesisUtterance(text)
-      if (fallbackLang) u.lang = fallbackLang
-      window.speechSynthesis.speak(u)
-    } else {
-      setAudioError('Audio playback failed')
-    }
-  }, [dictionary, selectedText, stopAudio])
-
-  const playAudio = useCallback(async () => {
-    if (audioPlaying) { stopAudio(); return }
-    await startAudio()
-  }, [audioPlaying, startAudio, stopAudio])
-
-  return { audioPlaying, audioError, playAudio, startAudio, stopAudio }
-}
 
 export function Popover({ state, selection, trigger, lookupDisplayWord, lookupDisplayDefinition, dictionary, translation, ocrImageOverlay, error, panelMode, enableAudio, autoPlayAudioMode, outputLanguage, selectionAnchor, onOpenSettings, onRequestClose }: PopoverProps) {
   const [activePanel, setActivePanel] = useState<PopoverOpenPanelMode>('none')
@@ -143,7 +80,11 @@ export function Popover({ state, selection, trigger, lookupDisplayWord, lookupDi
     () => normalizeText(ocrImageOverlay?.text || selection),
     [ocrImageOverlay?.text, selection],
   )
-  const { audioError, playAudio, startAudio, stopAudio } = useAudioPlayer(dictionary, selectedText)
+  const { audioError, playAudio, startAudio, stopAudio } = useSharedAudioPlayer({
+    audioUrl: dictionary?.audio_url,
+    fallbackWord: dictionary?.word || selectedText,
+    fallbackLang: dictionary?.audio_lang || 'en',
+  })
 
   const flashOverlayCopyStatus = useCallback((next: 'textCopied' | 'imageCopied' | 'failed') => {
     setOverlayCopyStatus(next)

@@ -92,6 +92,37 @@ function Get-FreeTcpPort {
   }
 }
 
+function Stop-ProcessListeningOnPort {
+  param([int]$Port)
+
+  try {
+    $listeners = Get-NetTCPConnection -LocalPort $Port -State Listen -ErrorAction Stop
+  }
+  catch {
+    return
+  }
+
+  $pids = $listeners |
+    Select-Object -ExpandProperty OwningProcess -Unique |
+    Where-Object { $_ -and $_ -gt 0 }
+
+  foreach ($ownerPid in $pids) {
+    try {
+      $proc = Get-Process -Id $ownerPid -ErrorAction Stop
+      if ($proc.ProcessName -in @("node", "vite", "pnpm", "npm")) {
+        Write-Host "  Port $Port dang duoc su dung boi $($proc.ProcessName)($ownerPid), se dong tien trinh nay."
+        Stop-Process -Id $ownerPid -Force -ErrorAction Stop
+      }
+      else {
+        Write-Host "  Port $Port dang duoc su dung boi $($proc.ProcessName)($ownerPid), bo qua khong tu dong dong."
+      }
+    }
+    catch {
+      continue
+    }
+  }
+}
+
 function Remove-GitUsrBinFromPath {
   $entries = $env:Path -split ";"
   $cleaned = $entries | Where-Object { $_ -and ($_ -notmatch "(?i)\\Git\\usr\\bin\\?") }
@@ -189,18 +220,13 @@ try {
   & $PythonBin -m pip install -r requirements.txt
 
   $effectiveSidecarPort = [int]$SidecarPort
-  if (Test-PortInUse -Port $effectiveSidecarPort) {
-    Write-Host "  Port $SidecarPort dang duoc su dung, se tai su dung sidecar hien co."
+  if (-not (Test-PortBindable -Port $effectiveSidecarPort)) {
+    $effectiveSidecarPort = Get-FreeTcpPort
+    Write-Host "  Port $SidecarPort khong bind duoc, chuyen sang port $effectiveSidecarPort."
   }
-  else {
-    if (-not (Test-PortBindable -Port $effectiveSidecarPort)) {
-      $effectiveSidecarPort = Get-FreeTcpPort
-      Write-Host "  Port $SidecarPort khong bind duoc, chuyen sang port $effectiveSidecarPort."
-    }
 
-    $sidecarProc = Start-Process -FilePath $PythonBin -ArgumentList @("-m", "uvicorn", "main:app", "--port", "$effectiveSidecarPort", "--reload") -PassThru -NoNewWindow
-    $sidecarStartedByScript = $true
-  }
+  $sidecarProc = Start-Process -FilePath $PythonBin -ArgumentList @("-m", "uvicorn", "main:app", "--port", "$effectiveSidecarPort", "--reload") -PassThru -NoNewWindow
+  $sidecarStartedByScript = $true
 
   Write-Host "[2/4] Install frontend deps"
   Set-Location $RootDir
@@ -214,8 +240,13 @@ try {
   Write-Host "[3/4] Ensure OCR font resource"
   Ensure-OcrFontResource
 
-  Write-Host "[4/4] Start Tauri dev"
+  Write-Host "[4/5] Ensure Vite port"
+  Stop-ProcessListeningOnPort -Port 5173
+
+  Write-Host "[5/5] Start Tauri dev"
   $env:SIDECAR_PORT = "$effectiveSidecarPort"
+  $env:VITE_SIDECAR_PORT = "$effectiveSidecarPort"
+  $env:VITE_SIDECAR_HOST = "127.0.0.1"
   $env:DICTOVER_ENABLE_DEBUG_TRACE = "1"
   $env:VITE_DEBUG_TRACE = "1"
   if ($PackageManager -eq "pnpm") {

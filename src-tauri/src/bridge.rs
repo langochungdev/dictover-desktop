@@ -77,6 +77,8 @@ pub struct QuickConvertWordData {
     #[serde(default)]
     pub phonetic: Option<String>,
     #[serde(default)]
+    pub part_of_speech: Option<String>,
+    #[serde(default)]
     pub audio_url: Option<String>,
     #[serde(default)]
     pub audio_lang: Option<String>,
@@ -260,34 +262,53 @@ pub async fn quick_convert_via_sidecar(
             TranslatePayload {
                 text: text.clone(),
                 source: source.clone(),
-                target,
+                target: target.clone(),
             },
         )
         .await
         .map_err(|err| format!("sidecar quick-convert compat translate failed: {err}"))?;
 
-        let single_word = !text.is_empty()
-            && count_words(&text) == 1
-            && !contains_sentence_punctuation(&text)
-            && count_non_whitespace_chars(&text) <= 48;
+        let translated_word = translate.result.trim().to_owned();
+        let translated_single_word = !translated_word.is_empty()
+            && count_words(&translated_word) == 1
+            && !contains_sentence_punctuation(&translated_word)
+            && count_non_whitespace_chars(&translated_word) <= 48;
 
         let mut word_data: Option<QuickConvertWordData> = None;
-        if single_word {
-            let (synonyms, related, sounds_like) = query_datamuse_word_data(client, &text).await;
+        if translated_single_word {
+            let (synonyms, related, sounds_like) =
+                query_datamuse_word_data(client, &translated_word).await;
             let lookup = lookup_via_sidecar(
                 client,
                 LookupPayload {
-                    word: text.clone(),
-                    source_lang: source,
+                    word: translated_word.clone(),
+                    source_lang: target.clone(),
                 },
             )
             .await
             .ok();
 
             let phonetic = lookup.as_ref().and_then(|item| item.phonetic.clone());
-            let audio_url = lookup.as_ref().and_then(|item| item.audio_url.clone());
-            let audio_lang = lookup.as_ref().and_then(|item| item.audio_lang.clone());
+            let part_of_speech = lookup.as_ref().and_then(|item| {
+                item.meanings.iter().find_map(|meaning| {
+                    let trimmed = meaning.part_of_speech.trim();
+                    if trimmed.is_empty() {
+                        None
+                    } else {
+                        Some(trimmed.to_owned())
+                    }
+                })
+            });
+            let mut audio_url = lookup.as_ref().and_then(|item| item.audio_url.clone());
+            let mut audio_lang = lookup.as_ref().and_then(|item| item.audio_lang.clone());
+            if audio_url.is_none() {
+                audio_url = build_google_tts_url(&translated_word, &target);
+                if audio_url.is_some() {
+                    audio_lang = Some(target.clone());
+                }
+            }
             let has_extra = phonetic.is_some()
+                || part_of_speech.is_some()
                 || audio_url.is_some()
                 || !synonyms.is_empty()
                 || !related.is_empty()
@@ -295,8 +316,9 @@ pub async fn quick_convert_via_sidecar(
 
             if has_extra {
                 word_data = Some(QuickConvertWordData {
-                    input: text,
+                    input: translated_word,
                     phonetic,
+                    part_of_speech,
                     audio_url,
                     audio_lang,
                     synonyms,
@@ -343,6 +365,27 @@ pub async fn quick_convert_via_sidecar(
         .json::<QuickConvertResponse>()
         .await
         .map_err(|err| format!("sidecar quick-convert decode failed: {err}"))
+}
+
+fn build_google_tts_url(text: &str, lang: &str) -> Option<String> {
+    let query = text.trim();
+    if query.is_empty() {
+        return None;
+    }
+
+    let normalized_lang = match lang.trim() {
+        "zh" | "zh-CN" => "zh-CN",
+        "" => "en",
+        value => value,
+    };
+
+    let mut url = reqwest::Url::parse("https://translate.google.com/translate_tts").ok()?;
+    url.query_pairs_mut()
+        .append_pair("ie", "UTF-8")
+        .append_pair("client", "tw-ob")
+        .append_pair("tl", normalized_lang)
+        .append_pair("q", query);
+    Some(url.to_string())
 }
 
 async fn query_datamuse_word_data(

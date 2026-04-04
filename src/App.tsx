@@ -6,7 +6,7 @@ import { getCurrentWindow } from '@tauri-apps/api/window'
 import { Popover } from '@/components/Popover/Popover'
 import { DebugLogWindow } from '@/components/DebugLog/DebugLogWindow'
 import { OcrOverlayWindow } from '@/components/OcrOverlay/OcrOverlayWindow'
-import { QuickConvertPopup } from '@/components/QuickConvert/QuickConvertPopup'
+import { QuickConvertPopup } from '@/components/QuickConvert/QuickConvertPopup.tsx'
 import { SettingsPanel } from '@/components/Settings/SettingsPanel'
 import { getSettingsCopy } from '@/constants/settingsI18n'
 import { usePopover, type PopoverState, type PopoverTrigger } from '@/hooks/usePopover'
@@ -19,7 +19,7 @@ import {
   isDebugTraceEnabled,
 } from '@/services/debugLog'
 import type { DictionaryResult } from '@/services/dictionary'
-import type { TranslateResult } from '@/services/translate'
+import { translateText, type TranslateResult } from '@/services/translate'
 import type { SelectionAnchor } from '@/types/selectionAnchor'
 import { DEFAULT_SETTINGS, sanitizeSettings, type AppSettings } from '@/types/settings'
 
@@ -1397,6 +1397,46 @@ function QuickConvertWindow() {
     }
   }, [closeQuickConvert, hasTauriBridge])
 
+  useEffect(() => {
+    if (typeof document === 'undefined') {
+      return
+    }
+
+    const body = document.body
+    if (loading) {
+      body.classList.add('is-quick-convert-loading')
+    } else {
+      body.classList.remove('is-quick-convert-loading')
+    }
+
+    return () => {
+      body.classList.remove('is-quick-convert-loading')
+    }
+  }, [loading])
+
+  useEffect(() => {
+    if (!hasTauriBridge) {
+      return
+    }
+
+    if (loading) {
+      void invoke('show_loading_indicator').catch(() => undefined)
+      return
+    }
+
+    void invoke('hide_loading_indicator').catch(() => undefined)
+  }, [hasTauriBridge, loading])
+
+  useEffect(() => {
+    if (!hasTauriBridge) {
+      return
+    }
+
+    return () => {
+      void invoke('hide_loading_indicator').catch(() => undefined)
+    }
+  }, [hasTauriBridge])
+
   const submitQuickConvert = useCallback(() => {
     if (loading) {
       return
@@ -1428,6 +1468,13 @@ function QuickConvertWindow() {
           'Quick convert success',
           `kind=${converted.kind} engine=${converted.engine} mode=${converted.mode} resultLen=${converted.result.trim().length} meta=${converted.word_data ? 1 : 0}`,
         )
+        if (!converted.word_data) {
+          appendDebugLog(
+            'quick-convert',
+            'Quick convert missing word metadata',
+            `result="${converted.result}" source=${source} target=${target} mode=${converted.mode}`,
+          )
+        }
       } catch (cause) {
         appendDebugLog(
           'quick-convert',
@@ -1435,9 +1482,7 @@ function QuickConvertWindow() {
           `source=${source} target=${target} cause=${describeCause(cause)}`,
         )
         try {
-          const translated = await invoke<TranslateResult>('translate_text', {
-            payload: { text, source, target },
-          })
+          const translated = await translateText({ text, source, target })
           setOutputValue(translated.result)
           setResult(null)
           appendDebugLog(
@@ -1488,9 +1533,10 @@ function QuickConvertWindow() {
   }, [setQuickLanguages])
 
   return (
-    <main className="apl-quick-convert-shell">
+    <main className={`apl-quick-convert-shell${loading ? ' is-loading' : ''}`}>
       <QuickConvertPopup
         open
+        loading={loading}
         focusToken={focusToken}
         copy={copy}
         positionMode={settings.quick_convert_popup_position}
@@ -1502,9 +1548,9 @@ function QuickConvertWindow() {
         onClose={closeQuickConvert}
         onSubmit={submitQuickConvert}
         onSwapLanguages={onSwapLanguages}
-        onSourceLanguageChange={(value) => setQuickLanguages(value, settingsRef.current.quick_translate_target_language)}
-        onTargetLanguageChange={(value) => setQuickLanguages(settingsRef.current.quick_translate_source_language, value)}
-        onInputValueChange={(value) => {
+        onSourceLanguageChange={(value: AppSettings['quick_translate_source_language']) => setQuickLanguages(value, settingsRef.current.quick_translate_target_language)}
+        onTargetLanguageChange={(value: AppSettings['quick_translate_target_language']) => setQuickLanguages(settingsRef.current.quick_translate_source_language, value)}
+        onInputValueChange={(value: string) => {
           setInputValue(value)
           setOutputValue('')
           setResult(null)

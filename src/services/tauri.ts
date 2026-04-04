@@ -1,6 +1,15 @@
 import { invoke } from "@tauri-apps/api/core";
 
-const SIDECAR_BASE_URL = "http://127.0.0.1:49152";
+const sidecarHostFromEnv = String(import.meta.env.VITE_SIDECAR_HOST || "").trim();
+const sidecarPortFromEnv = String(import.meta.env.VITE_SIDECAR_PORT || "").trim();
+const sidecarHost = sidecarHostFromEnv || "127.0.0.1";
+const sidecarPort = sidecarPortFromEnv || "49152";
+const SIDECAR_BASE_URL = `http://${sidecarHost}:${sidecarPort}`;
+
+export function sidecarUrl(path: string): string {
+  const normalized = path.startsWith("/") ? path : `/${path}`;
+  return `${SIDECAR_BASE_URL}${normalized}`;
+}
 
 function hasTauriBridge(): boolean {
   return typeof window !== "undefined" && "__TAURI_INTERNALS__" in window;
@@ -23,7 +32,7 @@ export async function invokeWithFallback<T>(
 }
 
 export async function sidecarPost<T>(path: string, body: unknown): Promise<T> {
-  const response = await fetch(`${SIDECAR_BASE_URL}${path}`, {
+  const response = await fetch(sidecarUrl(path), {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body),

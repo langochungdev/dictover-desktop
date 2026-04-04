@@ -5,9 +5,12 @@ import type { SettingsCopy } from "@/constants/settingsI18n";
 import type { InputLanguageCode, OutputLanguageCode } from "@/constants/languages";
 import type { QuickConvertResult } from "@/services/quickConvert";
 import { appendDebugLog } from "@/services/debugLog";
+import { AudioIcon } from "@/components/Popover/PopoverIcons";
+import { useSharedAudioPlayer } from "@/hooks/useSharedAudioPlayer";
 
 interface QuickConvertPopupProps {
   open: boolean;
+  loading: boolean;
   focusToken: number;
   copy: SettingsCopy;
   positionMode: string;
@@ -26,6 +29,7 @@ interface QuickConvertPopupProps {
 
 export function QuickConvertPopup({
   open,
+  loading,
   focusToken,
   copy,
   positionMode,
@@ -47,14 +51,99 @@ export function QuickConvertPopup({
 
   const hasOutput = outputValue.trim().length > 0;
   const wordData = result?.word_data ?? null;
-  const hasWordMeta = Boolean(
-    wordData
-      && (wordData.phonetic
-        || wordData.audio_url
-        || wordData.related.length > 0
-        || wordData.synonyms.length > 0
-        || wordData.sounds_like.length > 0),
+
+  const relatedTerms = useMemo(() => {
+    if (!wordData) {
+      return [] as string[];
+    }
+
+    const merged = [...(wordData.synonyms || []), ...(wordData.related || [])];
+    const seen = new Set<string>();
+    const deduped: string[] = [];
+
+    for (const term of merged) {
+      const normalized = String(term || "").trim();
+      if (!normalized) {
+        continue;
+      }
+      const key = normalized.toLowerCase();
+      if (seen.has(key)) {
+        continue;
+      }
+      seen.add(key);
+      deduped.push(normalized);
+      if (deduped.length >= 12) {
+        break;
+      }
+    }
+
+    return deduped;
+  }, [wordData]);
+
+  const normalizedPhonetic = useMemo(() => {
+    const raw = String(wordData?.phonetic || "").trim();
+    if (!raw) {
+      return "";
+    }
+    const stripped = raw.replace(/^\/+|\/+$/g, "");
+    return stripped ? `/${stripped}/` : "";
+  }, [wordData?.phonetic]);
+
+  const partOfSpeech = String(wordData?.part_of_speech || "").trim();
+
+  const normalizedOutput = useMemo(() => {
+    return String(outputValue || "")
+      .trim()
+      .replace(/^\p{P}+/gu, "")
+      .replace(/\p{P}+$/gu, "")
+      .toLowerCase();
+  }, [outputValue]);
+
+  const normalizedWordInput = useMemo(() => {
+    return String(wordData?.input || "")
+      .trim()
+      .replace(/^\p{P}+/gu, "")
+      .replace(/\p{P}+$/gu, "")
+      .toLowerCase();
+  }, [wordData?.input]);
+
+  const isSingleWordOutput = useMemo(() => {
+    const text = String(outputValue || "").trim();
+    if (!text || /[\n]/.test(text)) {
+      return false;
+    }
+
+    const normalized = text
+      .replace(/[.!?;:。,、！？；：]+/g, " ")
+      .trim();
+    if (!normalized) {
+      return false;
+    }
+
+    return normalized.split(/\s+/).filter(Boolean).length === 1;
+  }, [outputValue]);
+
+  const showWordMetaLayout = Boolean(
+    result?.kind === "word"
+      && wordData
+      && isSingleWordOutput
+      && (!normalizedWordInput || normalizedWordInput === normalizedOutput),
   );
+
+  const { audioPlaying, playAudio, stopAudio } = useSharedAudioPlayer({
+    audioUrl: wordData?.audio_url,
+    fallbackWord: wordData?.input || outputValue,
+    fallbackLang: wordData?.audio_lang || targetLanguage,
+    debugScope: "quick-convert",
+  });
+
+  useEffect(() => {
+    if (open) {
+      return;
+    }
+    stopAudio();
+  }, [open, stopAudio]);
+
   const selectWidthCh = useMemo(() => {
     const longestLabel = Math.max(
       ...INPUT_LANGUAGES.map((lang) => lang.label.length),
@@ -232,10 +321,11 @@ export function QuickConvertPopup({
 
       <section
         ref={popupRef}
-        className={`apl-quick-convert-popup apl-quick-convert-popup--minimal${verticalAnchorClass}${isBottomPosition ? " is-bottom-layout" : ""}`}
+        className={`apl-quick-convert-popup apl-quick-convert-popup--minimal${verticalAnchorClass}${isBottomPosition ? " is-bottom-layout" : ""}${loading ? " is-loading" : ""}`}
         role="dialog"
         aria-modal="true"
         aria-label={copy.quickConvertPopupTitle}
+        aria-busy={loading}
       >
         <div
           ref={languageRowRef}
@@ -307,67 +397,41 @@ export function QuickConvertPopup({
         {hasOutput && (
           <section className="apl-quick-convert-result-card" aria-label={copy.quickConvertOutputLabel}>
             <div className="apl-quick-convert-result-primary">
-              <p className="apl-quick-convert-result-text">{outputValue}</p>
+              {showWordMetaLayout ? (
+                <div className="apl-quick-convert-result-head">
+                  <p className="apl-quick-convert-result-word">{outputValue}</p>
+                  {normalizedPhonetic && (
+                    <span className="apl-quick-convert-result-phonetic">{normalizedPhonetic}</span>
+                  )}
+                  {partOfSpeech && (
+                    <span className="apl-quick-convert-result-pos">{partOfSpeech}</span>
+                  )}
+                  {wordData && (
+                    <button
+                      type="button"
+                      className="apl-quick-convert-audio-btn"
+                      onClick={playAudio}
+                      aria-label="Play pronunciation"
+                      aria-pressed={audioPlaying}
+                    >
+                      <AudioIcon />
+                    </button>
+                  )}
+                </div>
+              ) : (
+                <p className="apl-quick-convert-result-text">{outputValue}</p>
+              )}
             </div>
 
-            <div className="apl-quick-convert-result-divider" aria-hidden="true" />
+            {showWordMetaLayout && relatedTerms.length > 0 && (
+              <>
+                <div className="apl-quick-convert-result-divider" aria-hidden="true" />
 
-            <div className="apl-quick-convert-result-secondary">
-              {result && (
-                <>
-                  <div className="apl-quick-convert-meta-row">
-                    <span className="apl-quick-convert-meta-label">Engine</span>
-                    <span className="apl-quick-convert-meta-value">{result.engine}</span>
-                  </div>
-                  <div className="apl-quick-convert-meta-row">
-                    <span className="apl-quick-convert-meta-label">Mode</span>
-                    <span className="apl-quick-convert-meta-value">{result.mode}</span>
-                  </div>
-                </>
-              )}
-
-              {wordData?.phonetic && (
-                <div className="apl-quick-convert-meta-row">
-                  <span className="apl-quick-convert-meta-label">IPA</span>
-                  <span className="apl-quick-convert-meta-value">{wordData.phonetic}</span>
+                <div className="apl-quick-convert-result-secondary">
+                  <p className="apl-quick-convert-related-list">{relatedTerms.join(" · ")}</p>
                 </div>
-              )}
-
-              {wordData?.audio_url && (
-                <div className="apl-quick-convert-meta-row">
-                  <span className="apl-quick-convert-meta-label">Audio</span>
-                  <audio className="apl-quick-convert-audio" controls preload="none" src={wordData.audio_url} />
-                </div>
-              )}
-
-              {wordData && wordData.related.length > 0 && (
-                <div className="apl-quick-convert-meta-row">
-                  <span className="apl-quick-convert-meta-label">Related</span>
-                  <span className="apl-quick-convert-meta-value">{wordData.related.slice(0, 8).join(", ")}</span>
-                </div>
-              )}
-
-              {wordData && wordData.synonyms.length > 0 && (
-                <div className="apl-quick-convert-meta-row">
-                  <span className="apl-quick-convert-meta-label">Synonyms</span>
-                  <span className="apl-quick-convert-meta-value">{wordData.synonyms.slice(0, 8).join(", ")}</span>
-                </div>
-              )}
-
-              {wordData && wordData.sounds_like.length > 0 && (
-                <div className="apl-quick-convert-meta-row">
-                  <span className="apl-quick-convert-meta-label">Sounds</span>
-                  <span className="apl-quick-convert-meta-value">{wordData.sounds_like.slice(0, 8).join(", ")}</span>
-                </div>
-              )}
-
-              {!result && !hasWordMeta && (
-                <div className="apl-quick-convert-meta-row">
-                  <span className="apl-quick-convert-meta-label">Info</span>
-                  <span className="apl-quick-convert-meta-value">No detail data</span>
-                </div>
-              )}
-            </div>
+              </>
+            )}
           </section>
         )}
       </section>

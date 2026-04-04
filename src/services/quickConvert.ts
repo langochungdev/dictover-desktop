@@ -1,9 +1,9 @@
-import { invoke } from "@tauri-apps/api/core";
-import { sidecarPost } from "@/services/tauri";
+import { invokeWithFallback, sidecarPost } from "@/services/tauri";
 
 export interface QuickConvertWordData {
   input: string;
   phonetic?: string | null;
+  part_of_speech?: string | null;
   audio_url?: string | null;
   audio_lang?: string | null;
   synonyms: string[];
@@ -29,34 +29,12 @@ export interface QuickConvertRequest {
 export async function quickConvertText(
   request: QuickConvertRequest,
 ): Promise<QuickConvertResult> {
-  const hasBridge =
-    typeof window !== "undefined" && "__TAURI_INTERNALS__" in window;
-
-  if (hasBridge) {
-    try {
-      return await invoke<QuickConvertResult>("quick_convert_text", {
-        payload: request,
-      });
-    } catch (invokeError) {
-      const invokeErrorMessage =
-        invokeError instanceof Error
-          ? invokeError.message
-          : String(invokeError);
-      console.error(
-        "[quick-convert] invoke failed, fallback to sidecar fetch",
-        {
-          source: request.source,
-          target: request.target,
-          textLength: request.text.length,
-          invokeError: invokeErrorMessage,
-        },
-      );
-      throw new Error(`quick-convert:invoke-failed:${invokeErrorMessage}`);
-    }
-  }
-
   try {
-    return await sidecarPost<QuickConvertResult>("/quick-convert", request);
+    return await invokeWithFallback<QuickConvertResult>(
+      "quick_convert_text",
+      { payload: request },
+      async () => sidecarPost<QuickConvertResult>("/quick-convert", request),
+    );
   } catch (fetchError) {
     const fetchMessage =
       fetchError instanceof Error ? fetchError.message : String(fetchError);
