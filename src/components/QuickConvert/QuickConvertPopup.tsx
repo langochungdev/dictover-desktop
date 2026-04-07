@@ -25,6 +25,7 @@ interface QuickConvertPopupProps {
   onSourceLanguageChange: (value: InputLanguageCode) => void;
   onTargetLanguageChange: (value: OutputLanguageCode) => void;
   onInputValueChange: (value: string) => void;
+  onEnsureEnglishInputMode: () => void;
 }
 
 export function QuickConvertPopup({
@@ -44,6 +45,7 @@ export function QuickConvertPopup({
   onSourceLanguageChange,
   onTargetLanguageChange,
   onInputValueChange,
+  onEnsureEnglishInputMode,
 }: QuickConvertPopupProps) {
   const popupRef = useRef<HTMLElement | null>(null);
   const languageRowRef = useRef<HTMLDivElement | null>(null);
@@ -215,6 +217,9 @@ export function QuickConvertPopup({
 
     const focusInput = () => {
       focusAndSelectInput(`focus-token-${focusToken}`);
+      if (sourceLanguage === "en") {
+        onEnsureEnglishInputMode();
+      }
     };
 
     const frameId = window.requestAnimationFrame(focusInput);
@@ -223,7 +228,7 @@ export function QuickConvertPopup({
       window.cancelAnimationFrame(frameId);
       window.clearTimeout(timerId);
     };
-  }, [open, focusAndSelectInput, focusToken]);
+  }, [open, focusAndSelectInput, focusToken, onEnsureEnglishInputMode, sourceLanguage]);
 
   useEffect(() => {
     if (!open) {
@@ -251,6 +256,16 @@ export function QuickConvertPopup({
       document.removeEventListener("visibilitychange", onVisibilityChange);
     };
   }, [open, focusAndSelectInput]);
+
+  useEffect(() => {
+    if (!open || sourceLanguage !== "en") {
+      return;
+    }
+
+    if (document.activeElement === inputRef.current) {
+      onEnsureEnglishInputMode();
+    }
+  }, [onEnsureEnglishInputMode, open, sourceLanguage]);
 
   useEffect(() => {
     if (!open) {
@@ -345,6 +360,11 @@ export function QuickConvertPopup({
       aria-label={copy.quickConvertInputLabel}
       value={inputValue}
       onChange={(event) => onInputValueChange(event.target.value)}
+      onFocus={() => {
+        if (sourceLanguage === "en") {
+          onEnsureEnglishInputMode();
+        }
+      }}
       onKeyDown={(event) => {
         if (event.key === "Enter" && !event.shiftKey) {
           event.preventDefault();

@@ -1275,9 +1275,12 @@ fn apply_settings_window_viewport_layout(
 pub fn show_quick_convert_window_with_seed(
     app: &AppHandle,
     position_mode: &str,
+    source_language: &str,
     seed_text: Option<String>,
     shortcut: Option<String>,
 ) -> Result<(), String> {
+    let _ = automation::capture_quick_convert_baseline_layout();
+
     let quick_convert = app
         .get_webview_window("quick-convert")
         .ok_or_else(|| "quick convert window not found".to_owned())?;
@@ -1301,6 +1304,10 @@ pub fn show_quick_convert_window_with_seed(
     quick_convert
         .set_focus()
         .map_err(|err| format!("focus quick convert window failed: {err}"))?;
+
+    if is_english_language_code(source_language) {
+        let _ = automation::activate_english_keyboard_layout();
+    }
 
     let payload = QuickConvertOpenedPayload {
         text: seed_text.unwrap_or_default(),
@@ -1339,7 +1346,13 @@ pub fn show_quick_convert_window(app: AppHandle, state: State<'_, AppState>) -> 
             .map_err(|_| "config lock poisoned".to_owned())?;
         guard.clone()
     };
-    show_quick_convert_window_with_seed(&app, &config.quick_convert_popup_position, None, None)
+    show_quick_convert_window_with_seed(
+        &app,
+        &config.quick_convert_popup_position,
+        &config.quick_translate_source_language,
+        None,
+        None,
+    )
 }
 
 #[tauri::command]
@@ -1349,6 +1362,7 @@ pub fn hide_quick_convert_window(app: AppHandle) -> Result<(), String> {
             .hide()
             .map_err(|err| format!("hide quick convert window failed: {err}"))?;
     }
+    let _ = automation::restore_previous_keyboard_layout();
     Ok(())
 }
 
@@ -1397,6 +1411,20 @@ pub async fn save_config(
     }
     let _ = app.emit("settings-updated", clean.clone());
     Ok(clean)
+}
+
+#[tauri::command]
+pub fn ensure_quick_convert_input_language(source_language: String) -> Result<bool, String> {
+    if !is_english_language_code(&source_language) {
+        return Ok(false);
+    }
+
+    automation::activate_english_keyboard_layout()
+}
+
+#[tauri::command]
+pub fn restore_quick_convert_input_language() -> Result<bool, String> {
+    automation::restore_previous_keyboard_layout()
 }
 
 #[tauri::command]

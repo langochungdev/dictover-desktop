@@ -1280,6 +1280,7 @@ fn force_close_quick_convert(app: &AppHandle, reason: &str) -> Result<(), String
             .hide()
             .map_err(|err| format!("hide quick convert window failed: {err}"))?;
     }
+    let _ = automation::restore_previous_keyboard_layout();
     Ok(())
 }
 

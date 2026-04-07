@@ -1613,11 +1613,26 @@ function QuickConvertWindow() {
     })()
   }, [])
 
+  const syncQuickConvertInputMode = useCallback((source: AppSettings['quick_translate_source_language']) => {
+    if (!hasTauriBridge) {
+      return
+    }
+
+    if (source === 'en') {
+      void invoke<boolean>('ensure_quick_convert_input_language', {
+        sourceLanguage: source,
+      }).catch(() => undefined)
+      return
+    }
+
+    void invoke<boolean>('restore_quick_convert_input_language').catch(() => undefined)
+  }, [hasTauriBridge])
+
   const closeQuickConvert = useCallback((reason: string) => {
     allowAsyncSeedReplaceRef.current = false
     appendDebugLog('quick-convert', 'Close quick convert', reason)
     void invoke('hide_quick_convert_window').catch(() => undefined)
-  }, [])
+  }, [appendDebugLog])
 
   useEffect(() => {
     let cleanupDebugCopy: (() => void) | null = null
@@ -1975,7 +1990,12 @@ function QuickConvertWindow() {
       quick_translate_target_language: target,
     })
     persistSettings(next)
-  }, [persistSettings])
+    syncQuickConvertInputMode(source)
+  }, [persistSettings, syncQuickConvertInputMode])
+
+  const ensureQuickConvertEnglishInputMode = useCallback(() => {
+    syncQuickConvertInputMode(settingsRef.current.quick_translate_source_language)
+  }, [syncQuickConvertInputMode])
 
   const onSwapLanguages = useCallback(() => {
     const source = settingsRef.current.quick_translate_source_language
@@ -2009,6 +2029,7 @@ function QuickConvertWindow() {
           setOutputValue('')
           setResult(null)
         }}
+        onEnsureEnglishInputMode={ensureQuickConvertEnglishInputMode}
       />
     </main>
   )

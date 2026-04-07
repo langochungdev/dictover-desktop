@@ -198,12 +198,12 @@ def _warmup_probe_word(lang: str) -> str:
 
 
 @app.get("/health")
-async def health() -> dict[str, str]:
+def health() -> dict[str, str]:
     return {"status": "ok"}
 
 
 @app.post("/translate")
-async def translate_endpoint(req: TranslateRequest) -> dict[str, str]:
+def translate_endpoint(req: TranslateRequest) -> dict[str, str]:
     try:
         result = translate(req.text, req.source, req.target)
         return {
@@ -216,7 +216,7 @@ async def translate_endpoint(req: TranslateRequest) -> dict[str, str]:
 
 
 @app.post("/lookup")
-async def lookup_endpoint(req: LookupRequest) -> dict:
+def lookup_endpoint(req: LookupRequest) -> dict:
     try:
         return lookup_dictionary(req.word, req.source_lang)
     except Exception as exc:
@@ -224,7 +224,7 @@ async def lookup_endpoint(req: LookupRequest) -> dict:
 
 
 @app.post("/quick-convert")
-async def quick_convert_endpoint(req: QuickConvertRequest) -> dict:
+def quick_convert_endpoint(req: QuickConvertRequest) -> dict:
     try:
         return quick_convert(req.text, req.source, req.target)
     except Exception as exc:
@@ -232,7 +232,7 @@ async def quick_convert_endpoint(req: QuickConvertRequest) -> dict:
 
 
 @app.post("/warmup")
-async def warmup_endpoint(req: WarmupRequest) -> dict:
+def warmup_endpoint(req: WarmupRequest) -> dict:
     source = req.source if req.source != "auto" else "en"
     target = req.target
     probe = _warmup_probe_word(source)
@@ -298,7 +298,7 @@ async def warmup_endpoint(req: WarmupRequest) -> dict:
 
 
 @app.get("/tts-proxy")
-async def tts_proxy_endpoint(
+def tts_proxy_endpoint(
     url: str = Query(min_length=1, max_length=2048),
 ) -> Response:
     try:
@@ -393,7 +393,7 @@ async def tts_proxy_endpoint(
 
 
 @app.post("/images")
-async def image_search_endpoint(req: ImageSearchRequest) -> dict:
+def image_search_endpoint(req: ImageSearchRequest) -> dict:
     try:
         return search_images(req.query, req.page, req.page_size)
     except Exception as exc:
@@ -401,7 +401,7 @@ async def image_search_endpoint(req: ImageSearchRequest) -> dict:
 
 
 @app.post("/ocr")
-async def ocr_endpoint(req: OcrRequest) -> dict[str, str]:
+def ocr_endpoint(req: OcrRequest) -> dict[str, str]:
     try:
         return {"text": run_ocr(req.image_base64, req.source, req.target)}
     except Exception as exc:
@@ -409,7 +409,7 @@ async def ocr_endpoint(req: OcrRequest) -> dict[str, str]:
 
 
 @app.post("/ocr-overlay")
-async def ocr_overlay_endpoint(req: OcrRequest) -> dict[str, str]:
+def ocr_overlay_endpoint(req: OcrRequest) -> dict[str, str]:
     try:
         return run_ocr_overlay(req.image_base64, req.source, req.target)
     except Exception as exc:

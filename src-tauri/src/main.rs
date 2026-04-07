@@ -122,6 +122,8 @@ fn main() {
             bridge::get_app_version,
             bridge::check_for_updates_now,
             bridge::save_config,
+            bridge::ensure_quick_convert_input_language,
+            bridge::restore_quick_convert_input_language,
             bridge::translate_text,
             bridge::quick_convert_text,
             bridge::lookup_dictionary,

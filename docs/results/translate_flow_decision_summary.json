@@ -1,0 +1,144 @@
+{
+  "fallbackResults": [
+    {
+      "text": "Hola, esta prueba valida la ruta de respaldo.",
+      "source": "auto",
+      "target": "en",
+      "label": "es->en(auto)",
+      "ok": true,
+      "status": 200,
+      "elapsedMs": 931,
+      "engine": "mymemory",
+      "mode": "api-fallback",
+      "result": "Hi, This test validates the backup path."
+    },
+    {
+      "text": "Ciao, questo test verifica il percorso di fallback.",
+      "source": "auto",
+      "target": "de",
+      "label": "it->de(auto)",
+      "ok": true,
+      "status": 200,
+      "elapsedMs": 795,
+      "engine": "mymemory",
+      "mode": "api-fallback",
+      "result": "Hallo, dieser Test überprüft den Fallback-Pfad."
+    },
+    {
+      "text": "Ola, este teste verifica o caminho de fallback.",
+      "source": "auto",
+      "target": "fr",
+      "label": "pt->fr(auto)",
+      "ok": true,
+      "status": 200,
+      "elapsedMs": 765,
+      "engine": "mymemory",
+      "mode": "api-fallback",
+      "result": "Bonjour, ce test vérifie le chemin de repli."
+    }
+  ],
+  "benchmarkSummary": {
+    "currentFlow": {
+      "total": 99,
+      "ok": 99,
+      "fail": 0,
+      "successRate": 100,
+      "avgLatencyMs": 622.62,
+      "p95LatencyMs": 2100.78,
+      "avgQualityScore": 86.91
+    },
+    "googlePrimaryFlow": {
+      "total": 99,
+      "ok": 99,
+      "fail": 0,
+      "successRate": 100,
+      "avgLatencyMs": 740.2,
+      "p95LatencyMs": 1408.99,
+      "avgQualityScore": 87.82
+    }
+  },
+  "speedCaseWins": {
+    "googleFaster": 25,
+    "currentFaster": 74,
+    "ties": 0
+  },
+  "qualityCaseWins": {
+    "googleHigher": 46,
+    "currentHigher": 38,
+    "ties": 15
+  },
+  "topLatencyDelta": [
+    {
+      "id": "ru->zh-CN",
+      "latencyDelta": -11389.91,
+      "qualityDelta": 0.12,
+      "currentLatency": 12032.22,
+      "googleLatency": 642.31,
+      "currentQuality": 83.55,
+      "googleQuality": 83.67
+    },
+    {
+      "id": "auto-1->vi",
+      "latencyDelta": -4157.88,
+      "qualityDelta": -2.15,
+      "currentLatency": 4456.14,
+      "googleLatency": 298.26,
+      "currentQuality": 84.65,
+      "googleQuality": 82.5
+    },
+    {
+      "id": "auto-1->ru",
+      "latencyDelta": -2933.71,
+      "qualityDelta": 7.8,
+      "currentLatency": 4342.7,
+      "googleLatency": 1408.99,
+      "currentQuality": 75,
+      "googleQuality": 82.8
+    },
+    {
+      "id": "vi->en",
+      "latencyDelta": -2801.65,
+      "qualityDelta": 7.82,
+      "currentLatency": 3820.02,
+      "googleLatency": 1018.37,
+      "currentQuality": 69.91,
+      "googleQuality": 77.73
+    },
+    {
+      "id": "ko->fi",
+      "latencyDelta": -1996.06,
+      "qualityDelta": -2.36,
+      "currentLatency": 3461.86,
+      "googleLatency": 1465.8,
+      "currentQuality": 94.17,
+      "googleQuality": 91.81
+    },
+    {
+      "id": "de->zh-CN",
+      "latencyDelta": -1689.17,
+      "qualityDelta": -1.5,
+      "currentLatency": 2100.78,
+      "googleLatency": 411.61,
+      "currentQuality": 86.5,
+      "googleQuality": 85
+    },
+    {
+      "id": "auto-3->de",
+      "latencyDelta": 1356.16,
+      "qualityDelta": -3.99,
+      "currentLatency": 113.85,
+      "googleLatency": 1470.01,
+      "currentQuality": 100,
+      "googleQuality": 96.01
+    },
+    {
+      "id": "zh-CN->vi",
+      "latencyDelta": 1264.41,
+      "qualityDelta": 3.5,
+      "currentLatency": 240.81,
+      "googleLatency": 1505.22,
+      "currentQuality": 72.5,
+      "googleQuality": 76
+    }
+  ]
+}

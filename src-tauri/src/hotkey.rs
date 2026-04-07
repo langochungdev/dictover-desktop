@@ -821,6 +821,7 @@ async fn on_quick_convert_triggered(
     bridge::show_quick_convert_window_with_seed(
         &app,
         &config.quick_convert_popup_position,
+        &config.quick_translate_source_language,
         None,
         Some(shortcut.clone()),
     )?;
