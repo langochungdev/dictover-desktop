@@ -1,6 +1,8 @@
 use std::io::{Error, ErrorKind};
 use std::process::{Child, Command};
+use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
 use std::sync::{Mutex, OnceLock};
+use std::time::{Duration, Instant};
 use tauri::{AppHandle, Manager};
 
 #[cfg(target_os = "windows")]
@@ -8,7 +10,16 @@ use std::os::windows::process::CommandExt;
 
 const SIDECAR_PORT: &str = "49152";
 const SIDECAR_HOST: &str = "127.0.0.1";
+const SIDECAR_IDLE_TIMEOUT_SECS_DEFAULT: u64 = 900;
+const SIDECAR_IDLE_CHECK_INTERVAL_SECS_DEFAULT: u64 = 10;
+const SIDECAR_MIN_UPTIME_BEFORE_IDLE_STOP_SECS_DEFAULT: u64 = 60;
+
 static SIDECAR_CHILD_SLOT: OnceLock<Mutex<Option<Child>>> = OnceLock::new();
+static SIDECAR_APP_HANDLE_SLOT: OnceLock<AppHandle> = OnceLock::new();
+static SIDECAR_LAST_USED_SLOT: OnceLock<Mutex<Option<Instant>>> = OnceLock::new();
+static SIDECAR_STARTED_AT_SLOT: OnceLock<Mutex<Option<Instant>>> = OnceLock::new();
+static SIDECAR_IN_FLIGHT_REQUESTS: AtomicUsize = AtomicUsize::new(0);
+static SIDECAR_IDLE_WATCHDOG_STARTED: AtomicBool = AtomicBool::new(false);
 
 #[cfg(target_os = "windows")]
 const SIDECAR_BINARY_NAME: &str = "dictover-sidecar.exe";
@@ -24,12 +35,25 @@ pub fn apply_default_sidecar_endpoints() {
     let base = format!("http://{host}:{port}");
     set_if_missing("SIDECAR_HEALTH_URL", &format!("{base}/health"));
     set_if_missing("SIDECAR_URL", &format!("{base}/translate"));
-    set_if_missing("SIDECAR_QUICK_CONVERT_URL", &format!("{base}/quick-convert"));
+    set_if_missing(
+        "SIDECAR_QUICK_CONVERT_URL",
+        &format!("{base}/quick-convert"),
+    );
     set_if_missing("SIDECAR_LOOKUP_URL", &format!("{base}/lookup"));
     set_if_missing("SIDECAR_IMAGES_URL", &format!("{base}/images"));
     set_if_missing("SIDECAR_OCR_URL", &format!("{base}/ocr"));
     set_if_missing("SIDECAR_OCR_OVERLAY_URL", &format!("{base}/ocr-overlay"));
     set_if_missing("SIDECAR_WARMUP_URL", &format!("{base}/warmup"));
+}
+
+pub fn init_sidecar_runtime(app: AppHandle) {
+    let _ = SIDECAR_APP_HANDLE_SLOT.set(app);
+    let _ = sidecar_last_used_slot();
+    let _ = sidecar_started_slot();
+}
+
+pub fn runtime_app_handle() -> Option<AppHandle> {
+    SIDECAR_APP_HANDLE_SLOT.get().cloned()
 }
 
 pub fn start_release_sidecar(app: &AppHandle) -> Result<Option<Child>, Error> {
@@ -56,6 +80,8 @@ pub fn start_release_sidecar(app: &AppHandle) -> Result<Option<Child>, Error> {
             format!("sidecar binary not found at {}", sidecar_path.display()),
         ));
     }
+
+    cleanup_stale_sidecars();
 
     let mut command = Command::new(&sidecar_path);
     command
@@ -88,6 +114,13 @@ pub fn set_tracked_sidecar(child: Option<Child>) {
     if let Ok(mut guard) = slot.lock() {
         *guard = child;
     }
+
+    if sidecar_exists() {
+        touch_sidecar_activity();
+        set_sidecar_started_now();
+    } else {
+        clear_sidecar_timestamps();
+    }
 }
 
 pub fn stop_tracked_sidecar() {
@@ -97,11 +130,113 @@ pub fn stop_tracked_sidecar() {
             stop_sidecar(&mut child);
         }
     }
+    clear_sidecar_timestamps();
 }
 
 pub fn stop_sidecar(child: &mut Child) {
     let _ = child.kill();
     let _ = child.wait();
+}
+
+pub fn ensure_release_sidecar_running() -> Result<bool, Error> {
+    apply_default_sidecar_endpoints();
+
+    if cfg!(debug_assertions) {
+        return Ok(false);
+    }
+
+    let mut already_running = false;
+    {
+        let slot = sidecar_slot();
+        let mut guard = slot
+            .lock()
+            .map_err(|_| Error::new(ErrorKind::Other, "sidecar child lock poisoned"))?;
+
+        if let Some(child) = guard.as_mut() {
+            match child.try_wait() {
+                Ok(None) => {
+                    already_running = true;
+                }
+                Ok(Some(_)) | Err(_) => {
+                    *guard = None;
+                }
+            }
+        }
+    }
+
+    if already_running {
+        touch_sidecar_activity();
+        return Ok(false);
+    }
+
+    let app = runtime_app_handle().ok_or_else(|| {
+        Error::new(
+            ErrorKind::NotConnected,
+            "sidecar app handle not initialized",
+        )
+    })?;
+
+    let child = start_release_sidecar(&app)?;
+    set_tracked_sidecar(child);
+    Ok(true)
+}
+
+pub fn begin_sidecar_request() {
+    SIDECAR_IN_FLIGHT_REQUESTS.fetch_add(1, Ordering::SeqCst);
+    touch_sidecar_activity();
+}
+
+pub fn end_sidecar_request() {
+    let _ = SIDECAR_IN_FLIGHT_REQUESTS.fetch_update(Ordering::SeqCst, Ordering::SeqCst, |value| {
+        value.checked_sub(1)
+    });
+}
+
+pub fn start_sidecar_idle_watchdog() {
+    if cfg!(debug_assertions) {
+        return;
+    }
+
+    let idle_timeout = sidecar_idle_timeout();
+    if idle_timeout.is_zero() {
+        return;
+    }
+
+    if SIDECAR_IDLE_WATCHDOG_STARTED.swap(true, Ordering::SeqCst) {
+        return;
+    }
+
+    let min_uptime = sidecar_min_uptime_before_idle_stop();
+    let interval = sidecar_idle_check_interval();
+
+    std::thread::spawn(move || loop {
+        std::thread::sleep(interval);
+
+        if SIDECAR_IN_FLIGHT_REQUESTS.load(Ordering::SeqCst) > 0 {
+            continue;
+        }
+
+        if !sidecar_exists() {
+            continue;
+        }
+
+        let Some(last_used) = read_sidecar_last_used() else {
+            continue;
+        };
+        let Some(started_at) = read_sidecar_started_at() else {
+            continue;
+        };
+
+        if started_at.elapsed() < min_uptime {
+            continue;
+        }
+
+        if last_used.elapsed() < idle_timeout {
+            continue;
+        }
+
+        stop_tracked_sidecar();
+    });
 }
 
 fn set_if_missing(key: &str, value: &str) {
@@ -113,3 +248,100 @@ fn set_if_missing(key: &str, value: &str) {
 fn sidecar_slot() -> &'static Mutex<Option<Child>> {
     SIDECAR_CHILD_SLOT.get_or_init(|| Mutex::new(None))
 }
+
+fn sidecar_last_used_slot() -> &'static Mutex<Option<Instant>> {
+    SIDECAR_LAST_USED_SLOT.get_or_init(|| Mutex::new(None))
+}
+
+fn sidecar_started_slot() -> &'static Mutex<Option<Instant>> {
+    SIDECAR_STARTED_AT_SLOT.get_or_init(|| Mutex::new(None))
+}
+
+fn sidecar_exists() -> bool {
+    let slot = sidecar_slot();
+    if let Ok(guard) = slot.lock() {
+        return guard.is_some();
+    }
+    false
+}
+
+fn touch_sidecar_activity() {
+    let slot = sidecar_last_used_slot();
+    if let Ok(mut guard) = slot.lock() {
+        *guard = Some(Instant::now());
+    }
+}
+
+fn set_sidecar_started_now() {
+    let slot = sidecar_started_slot();
+    if let Ok(mut guard) = slot.lock() {
+        *guard = Some(Instant::now());
+    }
+}
+
+fn clear_sidecar_timestamps() {
+    let last_used_slot = sidecar_last_used_slot();
+    if let Ok(mut guard) = last_used_slot.lock() {
+        *guard = None;
+    }
+
+    let started_slot = sidecar_started_slot();
+    if let Ok(mut guard) = started_slot.lock() {
+        *guard = None;
+    }
+}
+
+fn read_sidecar_last_used() -> Option<Instant> {
+    let slot = sidecar_last_used_slot();
+    if let Ok(guard) = slot.lock() {
+        return *guard;
+    }
+    None
+}
+
+fn read_sidecar_started_at() -> Option<Instant> {
+    let slot = sidecar_started_slot();
+    if let Ok(guard) = slot.lock() {
+        return *guard;
+    }
+    None
+}
+
+fn parse_env_u64(name: &str, default_value: u64) -> u64 {
+    std::env::var(name)
+        .ok()
+        .and_then(|value| value.parse::<u64>().ok())
+        .unwrap_or(default_value)
+}
+
+fn sidecar_idle_timeout() -> Duration {
+    Duration::from_secs(parse_env_u64(
+        "DICTOVER_SIDECAR_IDLE_TIMEOUT_SECONDS",
+        SIDECAR_IDLE_TIMEOUT_SECS_DEFAULT,
+    ))
+}
+
+fn sidecar_idle_check_interval() -> Duration {
+    Duration::from_secs(parse_env_u64(
+        "DICTOVER_SIDECAR_IDLE_CHECK_INTERVAL_SECONDS",
+        SIDECAR_IDLE_CHECK_INTERVAL_SECS_DEFAULT,
+    ))
+}
+
+fn sidecar_min_uptime_before_idle_stop() -> Duration {
+    Duration::from_secs(parse_env_u64(
+        "DICTOVER_SIDECAR_MIN_UPTIME_SECONDS",
+        SIDECAR_MIN_UPTIME_BEFORE_IDLE_STOP_SECS_DEFAULT,
+    ))
+}
+
+#[cfg(target_os = "windows")]
+fn cleanup_stale_sidecars() {
+    let mut command = Command::new("taskkill");
+    command.args(["/F", "/IM", SIDECAR_BINARY_NAME]);
+    command.creation_flags(CREATE_NO_WINDOW);
+    let _ = command.output();
+}
+
+#[cfg(not(target_os = "windows"))]
+fn cleanup_stale_sidecars() {}

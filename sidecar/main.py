@@ -5,18 +5,17 @@ from fastapi.responses import Response
 from pydantic import BaseModel, Field, field_validator
 import os
 import time
+from typing import Callable
 from urllib.parse import urlparse, urlunparse
 
 import uvicorn
 
 try:
     from .image import search_images
-    from .ocr import run_ocr, run_ocr_overlay
     from .translation import lookup_dictionary, quick_convert, translate
     from .engines import HTTP_TIMEOUT, SESSION, fallback_translate_api
 except ImportError:
     from image import search_images
-    from ocr import run_ocr, run_ocr_overlay
     from translation import lookup_dictionary, quick_convert, translate
     from engines import HTTP_TIMEOUT, SESSION, fallback_translate_api
 
@@ -137,6 +136,36 @@ app = FastAPI(title="DictOver Sidecar", version="0.1.0")
 TTS_PROXY_RETRY_COUNT = 1
 TTS_PROXY_RETRY_DELAY_SECONDS = 0.2
 TTS_PROXY_TIMEOUT_SECONDS = 8
+_OCR_HANDLERS: (
+    tuple[
+        Callable[[str, str, str], str],
+        Callable[[str, str, str], dict[str, str]],
+    ]
+    | None
+) = None
+
+
+def _get_ocr_handlers() -> tuple[
+    Callable[[str, str, str], str],
+    Callable[[str, str, str], dict[str, str]],
+]:
+    global _OCR_HANDLERS
+    if _OCR_HANDLERS is not None:
+        return _OCR_HANDLERS
+
+    try:
+        from .ocr import (
+            run_ocr as run_ocr_handler,
+            run_ocr_overlay as run_ocr_overlay_handler,
+        )
+    except ImportError:
+        from ocr import (
+            run_ocr as run_ocr_handler,
+            run_ocr_overlay as run_ocr_overlay_handler,
+        )
+
+    _OCR_HANDLERS = (run_ocr_handler, run_ocr_overlay_handler)
+    return _OCR_HANDLERS
 
 
 def _is_allowed_tts_host(hostname: str) -> bool:
@@ -403,7 +432,8 @@ def image_search_endpoint(req: ImageSearchRequest) -> dict:
 @app.post("/ocr")
 def ocr_endpoint(req: OcrRequest) -> dict[str, str]:
     try:
-        return {"text": run_ocr(req.image_base64, req.source, req.target)}
+        run_ocr_handler, _ = _get_ocr_handlers()
+        return {"text": run_ocr_handler(req.image_base64, req.source, req.target)}
     except Exception as exc:
         raise HTTPException(status_code=500, detail=str(exc)) from exc
 
@@ -411,7 +441,8 @@ def ocr_endpoint(req: OcrRequest) -> dict[str, str]:
 @app.post("/ocr-overlay")
 def ocr_overlay_endpoint(req: OcrRequest) -> dict[str, str]:
     try:
-        return run_ocr_overlay(req.image_base64, req.source, req.target)
+        _, run_ocr_overlay_handler = _get_ocr_handlers()
+        return run_ocr_overlay_handler(req.image_base64, req.source, req.target)
     except Exception as exc:
         raise HTTPException(status_code=500, detail=str(exc)) from exc
 

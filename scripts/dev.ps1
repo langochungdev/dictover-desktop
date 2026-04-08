@@ -3,6 +3,12 @@ $ErrorActionPreference = "Stop"
 $RootDir = Resolve-Path (Join-Path $PSScriptRoot "..")
 $PythonBin = if ($env:PYTHON_BIN) { $env:PYTHON_BIN } else { "python" }
 $SidecarPort = if ($env:SIDECAR_PORT) { $env:SIDECAR_PORT } else { "49152" }
+$SidecarReload = if ($null -ne $env:DICTOVER_SIDECAR_RELOAD -and $env:DICTOVER_SIDECAR_RELOAD.Trim() -ne "") {
+  $value = $env:DICTOVER_SIDECAR_RELOAD.Trim().ToLowerInvariant()
+  $value -in @("1", "true", "yes", "on")
+} else {
+  $false
+}
 $PackageManager = if ($env:DICTOVER_PACKAGE_MANAGER) {
   $env:DICTOVER_PACKAGE_MANAGER
 } elseif (Get-Command pnpm -ErrorAction SilentlyContinue) {
@@ -225,7 +231,16 @@ try {
     Write-Host "  Port $SidecarPort khong bind duoc, chuyen sang port $effectiveSidecarPort."
   }
 
-  $sidecarProc = Start-Process -FilePath $PythonBin -ArgumentList @("-m", "uvicorn", "main:app", "--port", "$effectiveSidecarPort", "--reload") -PassThru -NoNewWindow
+  $sidecarArgs = @("-m", "uvicorn", "main:app", "--host", "127.0.0.1", "--port", "$effectiveSidecarPort")
+  if ($SidecarReload) {
+    $sidecarArgs += "--reload"
+    Write-Host "  Sidecar mode: reload"
+  }
+  else {
+    Write-Host "  Sidecar mode: no-reload (RAM-optimized)"
+  }
+
+  $sidecarProc = Start-Process -FilePath $PythonBin -ArgumentList $sidecarArgs -PassThru -NoNewWindow
   $sidecarStartedByScript = $true
 
   Write-Host "[2/4] Install frontend deps"

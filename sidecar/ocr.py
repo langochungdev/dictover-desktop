@@ -1,8 +1,10 @@
 from __future__ import annotations
 
 import base64
+import gc
 import os
 import re
+from collections import OrderedDict
 from dataclasses import dataclass
 from io import BytesIO
 from typing import Dict, Tuple
@@ -24,7 +26,10 @@ except ImportError:
     from engines import translate
 
 
-_OCR_READERS: Dict[Tuple[str, ...], easyocr.Reader] = {}
+_OCR_READER_CACHE_LIMIT = max(
+    1, int(os.getenv("DICTOVER_OCR_READER_CACHE_LIMIT", "2") or "2")
+)
+_OCR_READERS: "OrderedDict[Tuple[str, ...], easyocr.Reader]" = OrderedDict()
 _FONT_CACHE: Dict[Tuple[str, int], ImageFont.FreeTypeFont] = {}
 
 
@@ -87,10 +92,15 @@ def _get_reader(source: str, target: str) -> easyocr.Reader:
     lang_key = _resolve_ocr_lang(source, target)
     reader = _OCR_READERS.get(lang_key)
     if reader is not None:
+        _OCR_READERS.move_to_end(lang_key)
         return reader
 
     reader = easyocr.Reader(list(lang_key), gpu=False)
     _OCR_READERS[lang_key] = reader
+    while len(_OCR_READERS) > _OCR_READER_CACHE_LIMIT:
+        _, stale_reader = _OCR_READERS.popitem(last=False)
+        del stale_reader
+        gc.collect()
     return reader
 
 
