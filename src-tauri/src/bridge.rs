@@ -264,18 +264,7 @@ struct QuickConvertOpenedPayload {
 
 const OCR_OVERLAY_WINDOW_LABEL: &str = "ocr-overlay";
 
-struct SidecarRequestScope;
-
-impl Drop for SidecarRequestScope {
-    fn drop(&mut self) {
-        sidecar_runtime::end_sidecar_request();
-    }
-}
-
-fn prepare_sidecar_request(stage: &str) -> Result<SidecarRequestScope, String> {
-    sidecar_runtime::begin_sidecar_request();
-    let scope = SidecarRequestScope;
-
+fn prepare_sidecar_request(stage: &str) -> Result<(), String> {
     let started_now = sidecar_runtime::ensure_release_sidecar_running()
         .map_err(|err| format!("ensure sidecar running failed: {err}"))?;
 
@@ -289,7 +278,7 @@ fn prepare_sidecar_request(stage: &str) -> Result<SidecarRequestScope, String> {
         }
     }
 
-    Ok(scope)
+    Ok(())
 }
 
 fn emit_hotkey_trace(app: &AppHandle, stage: &str, shortcut: &str, detail: String) {
@@ -311,7 +300,7 @@ pub async fn translate_via_sidecar(
     client: &Client,
     payload: TranslatePayload,
 ) -> Result<TranslateResponse, String> {
-    let _scope = prepare_sidecar_request("translate")?;
+    prepare_sidecar_request("translate")?;
     let endpoint = std::env::var("SIDECAR_URL")
         .unwrap_or_else(|_| "http://127.0.0.1:49152/translate".to_owned());
     let response = client
@@ -554,19 +543,16 @@ async fn warmup_pair_via_sidecar(
     source: String,
     target: String,
 ) -> SidecarWarmupStatusPayload {
-    let _scope = match prepare_sidecar_request(stage) {
-        Ok(scope) => scope,
-        Err(err) => {
-            return SidecarWarmupStatusPayload {
-                stage: stage.to_owned(),
-                source,
-                target,
-                ready: false,
-                attempts: 0,
-                detail: err,
-            }
-        }
-    };
+    if let Err(err) = prepare_sidecar_request(stage) {
+        return SidecarWarmupStatusPayload {
+            stage: stage.to_owned(),
+            source,
+            target,
+            ready: false,
+            attempts: 0,
+            detail: err,
+        };
+    }
 
     let endpoint = sidecar_warmup_endpoint();
     let mut attempts: u8 = 0;
@@ -660,7 +646,7 @@ pub async fn quick_convert_via_sidecar(
     client: &Client,
     payload: QuickConvertPayload,
 ) -> Result<QuickConvertResponse, String> {
-    let _scope = prepare_sidecar_request("quick-convert")?;
+    prepare_sidecar_request("quick-convert")?;
     let endpoint = std::env::var("SIDECAR_QUICK_CONVERT_URL")
         .unwrap_or_else(|_| "http://127.0.0.1:49152/quick-convert".to_owned());
     let response = client
@@ -878,7 +864,7 @@ async fn lookup_via_sidecar(
     client: &Client,
     payload: LookupPayload,
 ) -> Result<LookupResponse, String> {
-    let _scope = prepare_sidecar_request("lookup")?;
+    prepare_sidecar_request("lookup")?;
     let endpoint = std::env::var("SIDECAR_LOOKUP_URL")
         .unwrap_or_else(|_| "http://127.0.0.1:49152/lookup".to_owned());
     let response = client
@@ -897,7 +883,7 @@ async fn search_images_via_sidecar(
     client: &Client,
     payload: ImageSearchPayload,
 ) -> Result<ImageSearchResponse, String> {
-    let _scope = prepare_sidecar_request("images")?;
+    prepare_sidecar_request("images")?;
     let endpoint = std::env::var("SIDECAR_IMAGES_URL")
         .unwrap_or_else(|_| "http://127.0.0.1:49152/images".to_owned());
     let response = client
@@ -913,7 +899,7 @@ async fn search_images_via_sidecar(
 }
 
 async fn run_ocr_via_sidecar(client: &Client, payload: OcrPayload) -> Result<OcrResponse, String> {
-    let _scope = prepare_sidecar_request("ocr")?;
+    prepare_sidecar_request("ocr")?;
     let endpoint = std::env::var("SIDECAR_OCR_URL")
         .unwrap_or_else(|_| "http://127.0.0.1:49152/ocr".to_owned());
     let response = client
@@ -932,7 +918,7 @@ async fn run_ocr_overlay_via_sidecar(
     client: &Client,
     payload: OcrPayload,
 ) -> Result<OcrOverlayResponse, String> {
-    let _scope = prepare_sidecar_request("ocr-overlay")?;
+    prepare_sidecar_request("ocr-overlay")?;
     let endpoint = std::env::var("SIDECAR_OCR_OVERLAY_URL")
         .unwrap_or_else(|_| "http://127.0.0.1:49152/ocr-overlay".to_owned());
     let response = client

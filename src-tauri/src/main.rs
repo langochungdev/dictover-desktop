@@ -60,7 +60,6 @@ fn main() {
             let loaded = config::load_config_from_disk(&app_handle);
             let sidecar_process = sidecar_runtime::start_release_sidecar(&app_handle)?;
             sidecar_runtime::set_tracked_sidecar(sidecar_process);
-            sidecar_runtime::start_sidecar_idle_watchdog();
             let state = bridge::AppState {
                 config: std::sync::Mutex::new(loaded.clone()),
                 client: Client::new(),
